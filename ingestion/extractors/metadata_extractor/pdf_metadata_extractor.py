@@ -1,7 +1,6 @@
 import re
 import fitz
 from pathlib import Path
-from dataclasses import dataclass
 from extractors.tools.title_extractor import TitleExtractor
 from extractors.tools.page_count_extractor import PageCounterExtractor
 from extractors.tools.isbn_extractor import IsbnExtractor
@@ -11,7 +10,7 @@ from extractors.tools.authors_extractor import AuthorsExtractor
 from extractors.tools.description_extractor import DescriptionExtractor
 from extractors.tools.category_extractor import CategoryExtractor
 from extractors.tools.language_extractor import LanguageExtractor
-from extractors.models.models import EbookMetadata, map_query_to_ebook_metadata
+from extractors.models.models import CoverExtractionResult, EbookMetadata, map_query_to_ebook_metadata
 from extractors.models.errors import *
 
 _FAILURE_SENTINELS: frozenset[str] = frozenset({"n/a", "not found"})
@@ -60,11 +59,6 @@ class PdfDataExtractor():
         pages_to_analize = "\n\n".join(parts)
         return self._normalize(pages_to_analize)
 
-    @dataclass(frozen=True)
-    class CoverExtractionResult:
-        data: bytes
-        mime_type: str
-
     def _extract_largest_image_from_page(self, pdf_file: fitz.Document, page: fitz.Page) -> CoverExtractionResult | None:
         images = page.get_images(full=True)
         if not images:
@@ -97,7 +91,7 @@ class PdfDataExtractor():
         if not best_data or not best_ext:
             return None
 
-        return self.CoverExtractionResult(data=best_data, mime_type=f"image/{best_ext.lower()}")
+        return CoverExtractionResult(data=best_data, mime_type=f"image/{best_ext.lower()}")
 
     def extract_cover_image(
         self,
@@ -126,7 +120,7 @@ class PdfDataExtractor():
                 if normalized_format not in {"png", "jpeg"}:
                     normalized_format = "png"
 
-                rendered = self.CoverExtractionResult(
+                rendered = CoverExtractionResult(
                     data=pix.tobytes(normalized_format),
                     mime_type=f"image/{normalized_format}",
                 )
