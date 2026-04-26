@@ -57,18 +57,15 @@ if __name__ == "__main__":
     total_books_found = len(ebook_path_list)
     print(f"Books found {total_books_found}")
 
-    ebook_paths_to_process = (
-        ebook_path_list[: args.limit]
-        if args.limit is not None
-        else ebook_path_list
-    )
     cover_output_dir = Path(COVER_IMAGE_FOLDER).resolve()
     cover_output_dir.mkdir(parents=True, exist_ok=True)
-
+    
     paths_to_extract: list[str] = []
     for session in get_db_session():
         repo = get_ebook_repository(session)
-        for ebook_path in ebook_paths_to_process:
+        for ebook_path in ebook_path_list:
+            if args.limit is not None and len(paths_to_extract) >= args.limit:
+                break
             file_name = Path(ebook_path).name
             if repo.exists_by_file_name(file_name):
                 print(f"Skip (already in DB): {file_name}")
