@@ -294,7 +294,34 @@ def test_extract_metadata_sets_has_errors_when_required_fields_missing(tmp_path:
 # extract_cover_image
 # ---------------------------------------------------------------------------
 
-def test_extract_cover_image_returns_cover_bytes_from_manifest(tmp_path: Path) -> None:
+def test_extract_cover_image_uses_opf_meta_cover_as_first_priority(tmp_path: Path) -> None:
+    """OPF <meta name='cover' content='<id>'> must win over all other strategies."""
+    epub_file = tmp_path / "epub3book.epub"
+    epub_file.write_bytes(b"fake")
+
+    cover_item = MagicMock()
+    cover_item.get_content.return_value = b"\xff\xd8\xff"  # JPEG magic bytes
+    cover_item.media_type = "image/jpeg"
+
+    book = MagicMock()
+    # OPF meta: name=cover → the cover item id
+    book.get_metadata.return_value = [(None, {"name": "cover", "content": "real-cover-id"})]
+    book.get_item_with_id.side_effect = lambda id_: cover_item if id_ == "real-cover-id" else None
+    book.get_items.return_value = iter([])
+    book.get_items_of_type.return_value = iter([])
+
+    extractor = _make_extractor()
+
+    with patch("extractors.metadata_extractor.epub_metadata_extractor.epub.read_epub", return_value=book):
+        result = extractor.extract_cover_image(epub_file)
+
+    assert isinstance(result, CoverExtractionResult)
+    assert result.data == b"\xff\xd8\xff"
+    assert result.mime_type == "image/jpeg"
+
+
+def test_extract_cover_image_falls_back_to_epub3_properties(tmp_path: Path) -> None:
+    """When OPF meta is absent, fall back to properties='cover-image'."""
     epub_file = tmp_path / "withcover.epub"
     epub_file.write_bytes(b"fake")
 
@@ -304,7 +331,10 @@ def test_extract_cover_image_returns_cover_bytes_from_manifest(tmp_path: Path) -
     cover_item.properties = ["cover-image"]
 
     book = MagicMock()
+    book.get_metadata.return_value = []  # no OPF meta name=cover
     book.get_items.return_value = iter([cover_item])
+    book.get_item_with_id.return_value = None
+    book.get_items_of_type.return_value = iter([])
 
     extractor = _make_extractor()
 
@@ -314,6 +344,34 @@ def test_extract_cover_image_returns_cover_bytes_from_manifest(tmp_path: Path) -
     assert isinstance(result, CoverExtractionResult)
     assert result.data == b"\x89PNG\r\n\x1a\n"
     assert result.mime_type == "image/png"
+
+
+def test_extract_cover_image_last_resort_returns_largest_image(tmp_path: Path) -> None:
+    """Last resort picks the largest image, skipping tiny CSS/UI icons."""
+    epub_file = tmp_path / "oldstyle.epub"
+    epub_file.write_bytes(b"fake")
+
+    small_icon = MagicMock()
+    small_icon.get_content.return_value = b"x" * 160  # tiny CSS icon
+    small_icon.media_type = "image/png"
+
+    real_cover = MagicMock()
+    real_cover.get_content.return_value = b"x" * 200_000  # real cover JPEG
+    real_cover.media_type = "image/jpeg"
+
+    book = MagicMock()
+    book.get_metadata.return_value = []
+    book.get_items.return_value = iter([])
+    book.get_item_with_id.return_value = None
+    book.get_items_of_type.return_value = iter([small_icon, real_cover])
+
+    extractor = _make_extractor()
+
+    with patch("extractors.metadata_extractor.epub_metadata_extractor.epub.read_epub", return_value=book):
+        result = extractor.extract_cover_image(epub_file)
+
+    assert result.mime_type == "image/jpeg"
+    assert len(result.data) == 200_000
 
 
 def test_extract_cover_image_raises_epub_read_error_on_open_failure(tmp_path: Path) -> None:
@@ -338,6 +396,7 @@ def test_extract_cover_image_raises_epub_read_error_when_no_cover_found(tmp_path
     epub_file.write_bytes(b"fake")
 
     book = MagicMock()
+    book.get_metadata.return_value = []
     book.get_items.return_value = iter([])
     book.get_item_with_id.return_value = None
     book.get_items_of_type.return_value = iter([])

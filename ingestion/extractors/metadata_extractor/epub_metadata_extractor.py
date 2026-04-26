@@ -109,23 +109,38 @@ class EpubDataExtractor:
         return None
 
     def _find_cover_item(self, book: epub.EpubBook) -> epub.EpubItem | None:
-        # EPUB3: manifest item with properties="cover-image"
+        # Priority 1 — OPF <meta name="cover" content="<id>"/> (EPUB2 + many EPUB3 files).
+        # ebooklib surfaces this as entries in get_metadata('OPF', 'meta').
+        for _value, attrs in (book.get_metadata("OPF", "meta") or []):
+            if attrs.get("name", "").lower() == "cover":
+                cover_id = attrs.get("content", "")
+                if cover_id:
+                    item = book.get_item_with_id(cover_id)
+                    if item is not None and item.media_type.startswith("image/"):
+                        return item
+
+        # Priority 2 — EPUB3: manifest item with properties containing "cover-image".
         for item in book.get_items():
-            props = getattr(item, "properties", None)
-            if props and "cover-image" in props:
+            props = getattr(item, "properties", None) or []
+            if "cover-image" in props:
                 return item
 
-        # EPUB2 / common convention: item with id "cover-image" or "cover"
+        # Priority 3 — common id conventions.
         for candidate_id in ("cover-image", "cover"):
             item = book.get_item_with_id(candidate_id)
-            if item is not None:
+            if item is not None and item.media_type.startswith("image/"):
                 return item
 
-        # Last resort: first image item in the manifest
+        # Last resort — largest image in the manifest (skips tiny CSS/UI icons).
+        best_item: epub.EpubItem | None = None
+        best_size: int = 0
         for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
-            return item
+            size = len(item.get_content() or b"")
+            if size > best_size:
+                best_size = size
+                best_item = item
 
-        return None
+        return best_item
 
     # ------------------------------------------------------------------
     # Public interface
