@@ -27,7 +27,7 @@ DATABASE_URL=postgresql+psycopg://user:pass@localhost:5432/ebooklibrary
 Run from the project root:
 
 ```bash
-uv run alembic -c ingestion/alembic.ini upgrade head
+uv run alembic upgrade head
 ```
 
 ### Create a new migration
@@ -35,11 +35,11 @@ uv run alembic -c ingestion/alembic.ini upgrade head
 After changing the ORM model in `persistence/orm/ebook_orm.py`, generate a migration:
 
 ```bash
-uv run alembic -c ingestion/alembic.ini revision --autogenerate -m "describe_your_change"
+uv run alembic revision --autogenerate -m "describe_your_change"
 ```
 
 ### Rollback one step
 
 ```bash
-uv run alembic -c ingestion/alembic.ini downgrade -1
+uv run alembic downgrade -1
 ```

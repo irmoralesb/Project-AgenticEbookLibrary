@@ -9,7 +9,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Project root: persistence package is importable (editable install or path).
-_root = Path(__file__).resolve().parents[3]
+_root = Path(__file__).resolve().parents[1]
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
