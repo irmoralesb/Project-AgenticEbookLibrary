@@ -9,8 +9,6 @@ from dependency_injection.dependency_utils import (
     get_ebook_scanner,
     get_pdf_data_extractor,
 )
-from domain.ebook_metadata import EbookMetadata
-
 load_dotenv()
 
 PAGES_TO_ANALIZE = 15
@@ -62,37 +60,44 @@ if __name__ == "__main__":
         for ebook_path in ebook_paths_to_process:
             file_name = Path(ebook_path).name
             if repo.exists_by_file_name(file_name):
-                print(f"Skip metadata (already in DB): {file_name}")
+                print(f"Skip (already in DB): {file_name}")
                 continue
             paths_to_extract.append(ebook_path)
 
-    ebooks_with_metadata: list[EbookMetadata] = []
+    succeeded: int = 0
+    failed: int = 0
+
     for ebook_path in paths_to_extract:
         path = Path(ebook_path)
-        metadata = _pdf_data_extractor.extract_metadata(path, PAGES_TO_ANALIZE)
+        print(f"Processing: {path.name}")
         try:
-            cover = _pdf_data_extractor.extract_cover_image(
-                path,
-                render_dpi=COVER_IMAGE_DPI,
-                render_format=COVER_IMAGE_FORMAT,
-                use_embedded_image_fallback=False,
-            )
-            ext = cover.mime_type.split("/")[-1]
-            cover_file_name = f"{path.stem}.{ext}"
-            cover_file_path = cover_output_dir / cover_file_name
-            cover_file_path.write_bytes(cover.data)
-            metadata.cover_image_path = str(cover_file_path)
-            metadata.cover_image_mime_type = cover.mime_type
+            metadata = _pdf_data_extractor.extract_metadata(path, PAGES_TO_ANALIZE)
+
+            try:
+                cover = _pdf_data_extractor.extract_cover_image(
+                    path,
+                    render_dpi=COVER_IMAGE_DPI,
+                    render_format=COVER_IMAGE_FORMAT,
+                    use_embedded_image_fallback=False,
+                )
+                ext = cover.mime_type.split("/")[-1]
+                cover_file_path = cover_output_dir / f"{path.stem}.{ext}"
+                cover_file_path.write_bytes(cover.data)
+                metadata.cover_image_path = str(cover_file_path)
+                metadata.cover_image_mime_type = cover.mime_type
+            except Exception as exc:
+                metadata.has_errors = True
+                print(f"  Cover extraction failed for {path.name}: {exc}")
+
+            for session in get_db_session():
+                repo = get_ebook_repository(session)
+                row = repo.add_from_metadata(metadata)
+                print(f"  Stored id={row.id} file_name={row.file_name}")
+
+            succeeded += 1
+
         except Exception as exc:
-            metadata.has_errors = True
-            print(f"Failed to extract cover for {path.name}: {exc}")
+            failed += 1
+            print(f"  Failed to process {path.name}: {exc}")
 
-        ebooks_with_metadata.append(metadata)
-
-    for session in get_db_session():
-        repo = get_ebook_repository(session)
-        for metadata in ebooks_with_metadata:
-            row = repo.add_from_metadata(metadata)
-            print(f"Stored metadata id={row.id} file_name={row.file_name}")
-
-    print(ebooks_with_metadata)
+    print(f"\nDone — succeeded: {succeeded}, failed: {failed}")

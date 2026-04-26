@@ -3,17 +3,47 @@ import fitz
 from pathlib import Path
 from dataclasses import dataclass
 from extractors.tools.title_extractor import TitleExtractor
-from extractors.tools.metadata_extractor import PdfMetadataExtractor
 from extractors.tools.page_count_extractor import PageCounterExtractor
-from extractors.models.models import EbookMetadata, QueryEbookMetadata, map_query_to_ebook_metadata
+from extractors.tools.isbn_extractor import IsbnExtractor
+from extractors.tools.year_extractor import YearExtractor
+from extractors.tools.publisher_extractor import PublisherExtractor
+from extractors.tools.authors_extractor import AuthorsExtractor
+from extractors.tools.description_extractor import DescriptionExtractor
+from extractors.tools.category_extractor import CategoryExtractor
+from extractors.tools.language_extractor import LanguageExtractor
+from extractors.models.models import EbookMetadata, map_query_to_ebook_metadata
 from extractors.models.errors import *
+
+_FAILURE_SENTINELS: frozenset[str] = frozenset({"n/a", "not found"})
+
+
+def _is_sentinel(value: str | None) -> bool:
+    """Return True when value is None, blank, or a known failure placeholder."""
+    return value is None or not value.strip() or value.strip().lower() in _FAILURE_SENTINELS
 
 
 class PdfDataExtractor():
-    def __init__(self, title_extractor: TitleExtractor, page_counter_extractor: PageCounterExtractor, metadata_extractor: PdfMetadataExtractor) -> None:
+    def __init__(
+        self,
+        title_extractor: TitleExtractor,
+        page_counter_extractor: PageCounterExtractor,
+        isbn_extractor: IsbnExtractor,
+        year_extractor: YearExtractor,
+        publisher_extractor: PublisherExtractor,
+        authors_extractor: AuthorsExtractor,
+        description_extractor: DescriptionExtractor,
+        category_extractor: CategoryExtractor,
+        language_extractor: LanguageExtractor,
+    ) -> None:
         self.title_extractor = title_extractor
         self.page_counter_extractor = page_counter_extractor
-        self.metadata_extractor = metadata_extractor
+        self.isbn_extractor = isbn_extractor
+        self.year_extractor = year_extractor
+        self.publisher_extractor = publisher_extractor
+        self.authors_extractor = authors_extractor
+        self.description_extractor = description_extractor
+        self.category_extractor = category_extractor
+        self.language_extractor = language_extractor
 
     def _normalize(self, text: str, max_chars: int = 12000) -> str:
         text = re.sub(r"[ \t]+", " ", text)
@@ -118,39 +148,92 @@ class PdfDataExtractor():
     def extract_metadata(self, pdf_path: Path, number_of_pages_to_analize: int = 10) -> EbookMetadata:
         pdf_path = pdf_path.resolve()
         has_errors = False
+
         try:
             with fitz.open(pdf_path) as pdf_file:
-                pdf_total_pages = self.page_counter_extractor.get_total_page_number(
+                pdf_total_pages = self.page_counter_extractor.get_total_page_number_for_pdf(
                     pdf_file)
                 pages_to_analize = self._get_pages_to_analize(
                     pdf_file, number_of_pages_to_analize)
-
         except Exception as exc:
             has_errors = True
             raise PdfReadError("Failed to open/read pdf",
                                file_name=pdf_path.name, stage="pdf_read", cause=exc) from exc
-            
 
         try:
-            title_with_edition = self.title_extractor.get_title_and_edition(
-                pdf_path.name)
-            print(f"Title: {title_with_edition}")
+            title_with_edition = self.title_extractor.get_title_and_edition(pdf_path.name)
         except Exception as exc:
             has_errors = True
             raise MetadataEnrichmentError(
-                "Failed to extract the title", file_name=pdf_path.name, stage="title_extraction", cause=exc) from exc
+                "Failed to extract the title",
+                file_name=pdf_path.name, stage="title_extraction", cause=exc) from exc
 
         try:
-            metadata = self.metadata_extractor.get_metadata(pages_to_analize, pdf_path.name)
+            parsed_isbn = self.isbn_extractor.extract_isbn_from_text(pages_to_analize)
         except Exception:
-            metadata = QueryEbookMetadata()
+            parsed_isbn = None
             has_errors = True
-            
+
+        try:
+            parsed_year = self.year_extractor.extract_year_from_text(pages_to_analize)
+        except Exception:
+            parsed_year = None
+            has_errors = True
+
+        try:
+            parsed_publisher = self.publisher_extractor.extract_publisher_from_text(pages_to_analize)
+        except Exception:
+            parsed_publisher = None
+            has_errors = True
+
+        try:
+            parsed_authors = self.authors_extractor.get_authors(pages_to_analize)
+        except Exception:
+            parsed_authors = []
+            has_errors = True
+
+        try:
+            parsed_description = self.description_extractor.get_description(pages_to_analize)
+        except Exception:
+            parsed_description = None
+            has_errors = True
+
+        try:
+            parsed_category = self.category_extractor.get_category(pages_to_analize)
+        except Exception:
+            parsed_category = None
+            has_errors = True
+
+        try:
+            parsed_language = self.language_extractor.get_language(pages_to_analize)
+        except Exception:
+            parsed_language = None
+            has_errors = True
+
+        has_errors = (
+            has_errors
+            or _is_sentinel(title_with_edition.title)
+            or parsed_isbn is None
+            or parsed_year is None
+            or not parsed_authors
+            or _is_sentinel(parsed_description)
+            or parsed_category is None
+            or parsed_publisher is None
+            or _is_sentinel(parsed_language)
+        )
+
         return map_query_to_ebook_metadata(
-            metadata,
             title=title_with_edition.title,
             edition=title_with_edition.edition,
             file_name=pdf_path.name,
             page_count=pdf_total_pages,
-            has_errors=has_errors
+            isbn=parsed_isbn,
+            authors=parsed_authors,
+            year=parsed_year,
+            description=parsed_description,
+            category=parsed_category.category if parsed_category else None,
+            subcategory=parsed_category.subcategory if parsed_category else None,
+            publisher=parsed_publisher,
+            language=parsed_language,
+            has_errors=has_errors,
         )

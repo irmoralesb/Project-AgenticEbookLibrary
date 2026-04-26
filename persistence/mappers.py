@@ -19,4 +19,5 @@ def ebook_metadata_to_orm(metadata: EbookMetadata) -> EbookORM:
         file_name=metadata.file_name or "Not Found",
         cover_image_path=metadata.cover_image_path,
         cover_image_mime_type=metadata.cover_image_mime_type,
+        has_errors=metadata.has_errors,
     )

@@ -80,3 +80,4 @@ class EbookORM(Base):
     file_name: Mapped[str] = mapped_column(String(512), nullable=False)
     cover_image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     cover_image_mime_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    has_errors: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
