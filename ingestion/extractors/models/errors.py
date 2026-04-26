@@ -6,15 +6,11 @@ class EbookExtractionError(Exception):
         self.__cause__ = cause
 
 
-class PdfExtractionError(EbookExtractionError):
-    """Retained for backward compatibility."""
-
-
-class PfdOpenError(PdfExtractionError):
+class PfdOpenError(EbookExtractionError):
     pass
 
 
-class PdfReadError(PdfExtractionError):
+class PdfReadError(EbookExtractionError):
     pass
 
 
