@@ -1,6 +1,14 @@
+from dataclasses import dataclass
+
 from pydantic import BaseModel, Field
 
 from domain.ebook_metadata import Category, EbookMetadata
+
+
+@dataclass(frozen=True)
+class CoverExtractionResult:
+    data: bytes
+    mime_type: str
 
 
 class QueryTitleWithEdition(BaseModel):

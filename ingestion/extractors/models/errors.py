@@ -1,4 +1,4 @@
-class PdfExtractionError(Exception):
+class EbookExtractionError(Exception):
     def __init__(self, message: str, *, file_name: str, stage: str, cause: Exception | None = None) -> None:
         super().__init__(message)
         self.file_name = file_name
@@ -6,13 +6,17 @@ class PdfExtractionError(Exception):
         self.__cause__ = cause
 
 
-class PfdOpenError(PdfExtractionError):
+class PfdOpenError(EbookExtractionError):
     pass
 
 
-class PdfReadError(PdfExtractionError):
+class PdfReadError(EbookExtractionError):
     pass
 
 
-class MetadataEnrichmentError(PdfExtractionError):
+class EpubReadError(EbookExtractionError):
+    pass
+
+
+class MetadataEnrichmentError(EbookExtractionError):
     pass

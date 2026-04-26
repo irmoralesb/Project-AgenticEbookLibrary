@@ -7,6 +7,7 @@ from dependency_injection.dependency_utils import (
     get_db_session,
     get_ebook_repository,
     get_ebook_scanner,
+    get_epub_data_extractor,
     get_pdf_data_extractor,
 )
 load_dotenv()
@@ -16,12 +17,19 @@ COVER_IMAGE_DPI = 160
 COVER_IMAGE_FORMAT = "png"
 COVER_IMAGE_FOLDER = "cover_images"
 
-_pdf_data_extractor = get_pdf_data_extractor()
-
 
 def get_ebooks_from_path(path: str, extension: str) -> list[str]:
     ebook_scanner = get_ebook_scanner()
     return ebook_scanner.get_ebooks_from_path(path=path, extension=extension)
+
+
+def _get_extractor(extension: str):
+    ext = extension.lstrip(".").lower()
+    if ext == "pdf":
+        return get_pdf_data_extractor()
+    if ext == "epub":
+        return get_epub_data_extractor()
+    raise ValueError(f"Unsupported extension: {extension!r}. Supported: pdf, epub.")
 
 
 if __name__ == "__main__":
@@ -30,7 +38,7 @@ if __name__ == "__main__":
         "path", type=str, help="Directory path to scan for ebooks."
     )
     parser.add_argument(
-        "extension", type=str, help="File extension to filter by (e.g. pdf)."
+        "extension", type=str, help="File extension to filter by (e.g. pdf, epub)."
     )
     parser.add_argument(
         "--limit",
@@ -41,23 +49,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    extractor = _get_extractor(args.extension)
+    is_pdf = args.extension.lstrip(".").lower() == "pdf"
+
     ebook_path_list = get_ebooks_from_path(path=args.path, extension=args.extension)
 
     total_books_found = len(ebook_path_list)
     print(f"Books found {total_books_found}")
 
-    ebook_paths_to_process = (
-        ebook_path_list[: args.limit]
-        if args.limit is not None
-        else ebook_path_list
-    )
     cover_output_dir = Path(COVER_IMAGE_FOLDER).resolve()
     cover_output_dir.mkdir(parents=True, exist_ok=True)
-
+    
     paths_to_extract: list[str] = []
     for session in get_db_session():
         repo = get_ebook_repository(session)
-        for ebook_path in ebook_paths_to_process:
+        for ebook_path in ebook_path_list:
+            if args.limit is not None and len(paths_to_extract) >= args.limit:
+                break
             file_name = Path(ebook_path).name
             if repo.exists_by_file_name(file_name):
                 print(f"Skip (already in DB): {file_name}")
@@ -71,15 +79,18 @@ if __name__ == "__main__":
         path = Path(ebook_path)
         print(f"Processing: {path.name}")
         try:
-            metadata = _pdf_data_extractor.extract_metadata(path, PAGES_TO_ANALIZE)
+            metadata = extractor.extract_metadata(path, PAGES_TO_ANALIZE)
 
             try:
-                cover = _pdf_data_extractor.extract_cover_image(
-                    path,
-                    render_dpi=COVER_IMAGE_DPI,
-                    render_format=COVER_IMAGE_FORMAT,
-                    use_embedded_image_fallback=False,
-                )
+                if is_pdf:
+                    cover = extractor.extract_cover_image(
+                        path,
+                        render_dpi=COVER_IMAGE_DPI,
+                        render_format=COVER_IMAGE_FORMAT,
+                        use_embedded_image_fallback=False,
+                    )
+                else:
+                    cover = extractor.extract_cover_image(path)
                 ext = cover.mime_type.split("/")[-1]
                 cover_file_path = cover_output_dir / f"{path.stem}.{ext}"
                 cover_file_path.write_bytes(cover.data)

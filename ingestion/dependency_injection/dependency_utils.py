@@ -15,6 +15,7 @@ for _p in (_root, _ing):
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
+from extractors.metadata_extractor.epub_metadata_extractor import EpubDataExtractor
 from extractors.metadata_extractor.pdf_metadata_extractor import PdfDataExtractor
 from extractors.tools.authors_extractor import AuthorsExtractor
 from extractors.tools.category_extractor import CategoryExtractor
@@ -107,6 +108,21 @@ def get_ebook_scanner() -> EbookScanner:
 def get_pdf_data_extractor() -> PdfDataExtractor:
     """Provide the PdfDataExtractor instance."""
     return PdfDataExtractor(
+        title_extractor=get_title_extractor(),
+        page_counter_extractor=get_page_counter_extractor(),
+        isbn_extractor=get_isbn_extractor(),
+        year_extractor=get_year_extractor(),
+        publisher_extractor=get_publisher_extractor(),
+        authors_extractor=get_authors_extractor(),
+        description_extractor=get_description_extractor(),
+        category_extractor=get_category_extractor(),
+        language_extractor=get_language_extractor(),
+    )
+
+
+def get_epub_data_extractor() -> EpubDataExtractor:
+    """Provide the EpubDataExtractor instance."""
+    return EpubDataExtractor(
         title_extractor=get_title_extractor(),
         page_counter_extractor=get_page_counter_extractor(),
         isbn_extractor=get_isbn_extractor(),
