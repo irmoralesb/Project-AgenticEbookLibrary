@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# .NET build artifacts (EbookLibraryUI WPF project)
+EbookLibraryUI/bin/
+EbookLibraryUI/obj/
+
+# Runtime data - cover images downloaded/extracted during ingestion
+cover_images/

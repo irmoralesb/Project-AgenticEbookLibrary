@@ -1,0 +1,154 @@
+<Page x:Class="EbookLibraryUI.Views.EbookDetailView"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Edit Ebook"
+      Background="{StaticResource SurfaceBrush}">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Edit Ebook"
+                   FontSize="20" FontWeight="SemiBold"
+                   Margin="0,0,0,16" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Cover + error flag -->
+            <StackPanel Grid.Column="0">
+                <Border Width="130" Height="182"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Background="White"
+                        ClipToBounds="True">
+                    <Image Source="{Binding CoverUrl}"
+                           Stretch="UniformToFill" />
+                </Border>
+
+                <CheckBox Content="Has errors"
+                          IsChecked="{Binding HasErrors}"
+                          Margin="0,12,0,0" />
+            </StackPanel>
+
+            <!-- Form fields -->
+            <ScrollViewer Grid.Column="2"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <TextBlock Text="Title" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13" />
+
+                    <TextBlock Text="Authors (comma-separated)" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding AuthorsText, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13" />
+
+                    <!-- ISBN + Year row -->
+                    <Grid Margin="0,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="ISBN" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Isbn, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Year" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Category" Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox ItemsSource="{Binding Categories, Mode=OneTime}"
+                              SelectedItem="{Binding Category}"
+                              Padding="8,6" FontSize="13" />
+
+                    <TextBlock Text="Subcategory" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding Subcategory, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13" />
+
+                    <!-- Publisher + Edition row -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Publisher" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Publisher, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Edition" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Edition, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Language + Page count row -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Language" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Language, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Page count" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding PageCount, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Description" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             MinHeight="90"
+                             VerticalScrollBarVisibility="Auto"
+                             Padding="8,6" FontSize="13" />
+
+                    <!-- Action buttons -->
+                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                        <Button Content="💾  Save"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SaveCommand}"
+                                Margin="0,0,8,0" />
+                        <Button Content="✕  Cancel"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding CancelCommand}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="{StaticResource SubtleTextBrush}"
+                               Margin="0,8,0,16" />
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>
