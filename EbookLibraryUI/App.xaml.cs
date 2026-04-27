@@ -30,7 +30,6 @@ public partial class App : Application
         {
             client.BaseAddress = new Uri("http://localhost:8000/");
             client.Timeout = TimeSpan.FromMinutes(10); // ingestion can be slow
-            EbookDto.CoverBaseUrl = client.BaseAddress.ToString().TrimEnd('/');
         });
 
         services.AddSingleton<IFolderPickerService, WindowsFolderPickerService>();

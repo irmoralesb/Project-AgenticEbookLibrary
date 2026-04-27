@@ -1,4 +1,5 @@
 import argparse
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -33,6 +34,7 @@ def run_ingestion(
     path: str,
     extension: str,
     limit: int | None = None,
+    cover_image_path: str | None = None,
     on_progress: Callable[[str], None] | None = None,
 ) -> dict[str, int]:
     """Scan *path* for ebooks of *extension* type and persist their metadata.
@@ -61,7 +63,8 @@ def run_ingestion(
     total_books_found = len(ebook_path_list)
     _emit(f"Books found: {total_books_found}")
 
-    cover_output_dir = Path(COVER_IMAGE_FOLDER).resolve()
+    configured_cover_dir = cover_image_path or os.getenv("COVER_IMAGE_PATH") or COVER_IMAGE_FOLDER
+    cover_output_dir = Path(configured_cover_dir).expanduser().resolve()
     cover_output_dir.mkdir(parents=True, exist_ok=True)
 
     paths_to_extract: list[str] = []

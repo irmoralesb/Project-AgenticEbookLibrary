@@ -61,6 +61,7 @@ async def _run_ingestion_stream(job_id: str):
                 path=request.path,
                 extension=request.extension,
                 limit=request.limit,
+                cover_image_path=request.cover_image_path,
                 on_progress=on_progress,
             )
         finally:

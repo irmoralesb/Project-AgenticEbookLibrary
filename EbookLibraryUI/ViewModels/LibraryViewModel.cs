@@ -21,6 +21,9 @@ public partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private EbookDto? _selectedBook;
 
+    [ObservableProperty]
+    private string _coverImageBasePath = EbookDto.CoverImageRootPath;
+
     public event Action<EbookDto>? EditRequested;
 
     public LibraryViewModel(IEbookApiService api)
@@ -49,6 +52,26 @@ public partial class LibraryViewModel : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task ApplyCoverImagePathAsync()
+    {
+        var normalizedPath = string.IsNullOrWhiteSpace(CoverImageBasePath)
+            ? string.Empty
+            : CoverImageBasePath.Trim().TrimEnd('/');
+
+        if (string.IsNullOrWhiteSpace(normalizedPath))
+        {
+            StatusMessage = "Image path cannot be empty.";
+            return;
+        }
+
+        EbookDto.CoverImageRootPath = normalizedPath;
+        CoverImageBasePath = normalizedPath;
+        StatusMessage = $"Image path updated: {normalizedPath}";
+
+        await LoadBooksAsync();
     }
 
     [RelayCommand]

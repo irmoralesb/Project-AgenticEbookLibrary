@@ -41,6 +41,11 @@
                             Command="{Binding BrowseFolderCommand}" />
                 </Grid>
 
+                <TextBlock Text="Cover image path" Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4" />
+                <TextBox Text="{Binding CoverImagePath, UpdateSourceTrigger=PropertyChanged}"
+                         Padding="8,6"
+                         FontSize="13" />
+
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                     <TextBlock Text="File type:"
                                VerticalAlignment="Center"

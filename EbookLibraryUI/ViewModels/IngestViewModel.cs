@@ -31,10 +31,18 @@ public partial class IngestViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    [ObservableProperty]
+    private string _coverImagePath = EbookDto.CoverImageRootPath;
+
     public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker)
     {
         _api = api;
         _folderPicker = folderPicker;
+    }
+
+    partial void OnCoverImagePathChanged(string value)
+    {
+        EbookDto.CoverImageRootPath = value?.Trim() ?? string.Empty;
     }
 
     [RelayCommand]
@@ -57,10 +65,14 @@ public partial class IngestViewModel : ObservableObject
 
         try
         {
+            var normalizedCoverImagePath = string.IsNullOrWhiteSpace(CoverImagePath) ? null : CoverImagePath.Trim();
+            EbookDto.CoverImageRootPath = normalizedCoverImagePath ?? string.Empty;
+
             var startResponse = await _api.StartIngestAsync(new IngestRequestDto
             {
                 Path = SelectedPath,
                 Extension = SelectedExtension,
+                CoverImagePath = normalizedCoverImagePath,
             }, _cts.Token);
 
             await foreach (var evt in _api.StreamIngestAsync(startResponse.JobId, _cts.Token))

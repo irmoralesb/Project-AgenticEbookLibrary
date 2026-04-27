@@ -84,6 +84,10 @@ class IngestRequest(BaseModel):
         ge=1,
         description="Maximum number of new books to process.",
     )
+    cover_image_path: str | None = Field(
+        default=None,
+        description="Absolute local directory path where extracted cover images will be stored.",
+    )
 
 
 class IngestStartResponse(BaseModel):

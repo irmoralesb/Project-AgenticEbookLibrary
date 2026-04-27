@@ -13,6 +13,10 @@ public class IngestRequestDto
     [JsonPropertyName("limit")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Limit { get; set; }
+
+    [JsonPropertyName("cover_image_path")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CoverImagePath { get; set; }
 }
 
 public class IngestStartResponse

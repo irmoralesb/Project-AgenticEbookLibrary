@@ -5,8 +5,8 @@ namespace EbookLibraryUI.Models;
 /// <summary>Mirrors the EbookResponse schema returned by the FastAPI backend.</summary>
 public class EbookDto
 {
-    /// <summary>Base URL used for static cover image links (set from configured API base address).</summary>
-    public static string CoverBaseUrl { get; set; } = "http://localhost:8000";
+    /// <summary>Optional local directory where cover images are stored.</summary>
+    public static string CoverImageRootPath { get; set; } = string.Empty;
 
     [JsonPropertyName("id")]
     public Guid Id { get; set; }
@@ -65,11 +65,25 @@ public class EbookDto
     /// <summary>Comma-separated authors string for display in table cells.</summary>
     public string AuthorsDisplay => Authors.Count > 0 ? string.Join(", ", Authors) : "—";
 
-    /// <summary>Full URL to load the cover image from the FastAPI static files mount.</summary>
-    public string? CoverUrl =>
-        FileName is not null
-            ? $"{CoverBaseUrl.TrimEnd('/')}/covers/{System.IO.Path.GetFileNameWithoutExtension(FileName)}{CoverExtension}"
-            : null;
+    /// <summary>Absolute local file URI for the cover image shown in WPF.</summary>
+    public string? CoverUrl
+    {
+        get
+        {
+            var extension = CoverExtension;
+            if (string.IsNullOrWhiteSpace(extension))
+                return BuildFileUri(CoverImagePath);
+
+            if (!string.IsNullOrWhiteSpace(CoverImageRootPath) && !string.IsNullOrWhiteSpace(FileName))
+            {
+                var fileName = $"{System.IO.Path.GetFileNameWithoutExtension(FileName)}{extension}";
+                var candidate = System.IO.Path.Combine(CoverImageRootPath, fileName);
+                return BuildFileUri(candidate);
+            }
+
+            return BuildFileUri(CoverImagePath);
+        }
+    }
 
     private string CoverExtension =>
         CoverImageMimeType switch
@@ -79,4 +93,15 @@ public class EbookDto
             "image/gif" => ".gif",
             _ => string.Empty,
         };
+
+    private static string? BuildFileUri(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var normalizedPath = path.Trim();
+        return Uri.TryCreate(normalizedPath, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri.IsFile ? absoluteUri.AbsoluteUri : null
+            : new Uri(normalizedPath, UriKind.Absolute).AbsoluteUri;
+    }
 }
