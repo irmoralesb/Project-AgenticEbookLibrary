@@ -15,7 +15,7 @@ from dependency_injection.dependency_utils import (
 
 load_dotenv()
 
-PAGES_TO_ANALIZE = 15
+PAGES_TO_ANALIZE = 5
 COVER_IMAGE_DPI = 160
 COVER_IMAGE_FORMAT = "png"
 COVER_IMAGE_FOLDER = "cover_images"

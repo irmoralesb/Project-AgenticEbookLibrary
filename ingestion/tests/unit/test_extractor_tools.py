@@ -36,13 +36,22 @@ def test_extract_isbn_from_text_returns_none_when_missing() -> None:
     assert isbn is None
 
 
-def test_extract_isbn_from_text_normalizes_hyphens_and_uppercases_x() -> None:
+def test_extract_isbn_from_text_preserves_hyphens_and_uppercases_x() -> None:
     text = "Appendix. ISBN-10: 1-4028-9462-x"
     extractor = IsbnExtractor()
 
     isbn = extractor.extract_isbn_from_text(text)
 
-    assert isbn == "140289462X"
+    assert isbn == "1-4028-9462-X"
+
+
+def test_extract_isbn_from_text_finds_isolated_isbn_without_prefix() -> None:
+    text = "Copyright page\n978-1-492-06796-1\nAll rights reserved."
+    extractor = IsbnExtractor()
+
+    isbn = extractor.extract_isbn_from_text(text)
+
+    assert isbn == "978-1-492-06796-1"
 
 
 # ---------------------------------------------------------------------------
