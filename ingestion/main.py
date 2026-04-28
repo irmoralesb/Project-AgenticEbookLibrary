@@ -16,8 +16,6 @@ from dependency_injection.dependency_utils import (
 load_dotenv()
 
 PAGES_TO_ANALIZE = 5
-COVER_IMAGE_DPI = 160
-COVER_IMAGE_FORMAT = "png"
 COVER_IMAGE_FOLDER = "cover_images"
 
 
@@ -55,7 +53,6 @@ def run_ingestion(
             on_progress(msg)
 
     extractor = _get_extractor(extension)
-    is_pdf = extension.lstrip(".").lower() == "pdf"
 
     scanner = get_ebook_scanner()
     ebook_path_list = scanner.get_ebooks_from_path(path=path, extension=extension)
@@ -86,26 +83,7 @@ def run_ingestion(
         book_path = Path(ebook_path)
         _emit(f"Processing: {book_path.name}")
         try:
-            metadata = extractor.extract_metadata(book_path, PAGES_TO_ANALIZE)
-
-            try:
-                if is_pdf:
-                    cover = extractor.extract_cover_image(
-                        book_path,
-                        render_dpi=COVER_IMAGE_DPI,
-                        render_format=COVER_IMAGE_FORMAT,
-                        use_embedded_image_fallback=False,
-                    )
-                else:
-                    cover = extractor.extract_cover_image(book_path)
-                ext = cover.mime_type.split("/")[-1]
-                cover_file_path = cover_output_dir / f"{book_path.stem}.{ext}"
-                cover_file_path.write_bytes(cover.data)
-                metadata.cover_image_path = str(cover_file_path)
-                metadata.cover_image_mime_type = cover.mime_type
-            except Exception as exc:
-                metadata.has_errors = True
-                _emit(f"  Cover extraction failed for {book_path.name}: {exc}")
+            metadata = extractor.extract_metadata(book_path, PAGES_TO_ANALIZE, cover_output_dir)
 
             for session in get_db_session():
                 repo = get_ebook_repository(session)

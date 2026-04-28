@@ -9,6 +9,7 @@ from extractors.models.errors import EpubReadError, MetadataEnrichmentError
 from extractors.models.models import CoverExtractionResult, EbookMetadata, map_query_to_ebook_metadata
 from extractors.tools.authors_extractor import AuthorsExtractor
 from extractors.tools.category_extractor import CategoryExtractor
+from extractors.tools.cover_image_utils import find_existing_cover, guess_mime_type_from_suffix
 from extractors.tools.description_extractor import DescriptionExtractor
 from extractors.tools.isbn_extractor import IsbnExtractor
 from extractors.tools.language_extractor import LanguageExtractor
@@ -210,7 +211,36 @@ class EpubDataExtractor:
         media_type: str = getattr(cover_item, "media_type", "") or "image/jpeg"
         return CoverExtractionResult(data=data, mime_type=media_type)
 
-    def extract_metadata(self, epub_path: Path, number_of_spine_items_to_analyse: int = 10) -> EbookMetadata:
+    def extract_and_save_cover_image(
+        self,
+        book_path: Path,
+        cover_output_dir: Path,
+        *,
+        prior_cover_path: str | None = None,
+    ) -> tuple[Path, str, bool]:
+        """Return ``(saved_path, mime_type, was_reused)``.
+
+        Checks for an existing cover image first; extracts and saves one only
+        when none is found. ``was_reused`` is ``True`` when no extraction ran.
+        """
+        cover_output_dir.mkdir(parents=True, exist_ok=True)
+        existing = find_existing_cover(book_path, cover_output_dir, prior_cover_path)
+        if existing is not None:
+            mime = guess_mime_type_from_suffix(existing) or "image/jpeg"
+            return existing, mime, True
+
+        cover = self.extract_cover_image(book_path)
+        ext = cover.mime_type.split("/")[-1]
+        dest = cover_output_dir / f"{book_path.stem}.{ext}"
+        dest.write_bytes(cover.data)
+        return dest.resolve(), cover.mime_type, False
+
+    def extract_metadata(
+        self,
+        epub_path: Path,
+        number_of_spine_items_to_analyse: int = 10,
+        cover_output_dir: Path | None = None,
+    ) -> EbookMetadata:
         epub_path = epub_path.resolve()
         has_errors = False
 
@@ -325,6 +355,20 @@ class EpubDataExtractor:
             parsed_category = None
             has_errors = True
 
+        # --- Cover image ---
+        cover_image_path: str | None = None
+        cover_image_mime_type: str | None = None
+        if cover_output_dir is not None:
+            try:
+                _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(
+                    epub_path, cover_output_dir
+                )
+                cover_image_path = str(_cover_path)
+            except Exception:
+                cover_image_path = None
+                cover_image_mime_type = None
+                has_errors = True
+
         has_errors = (
             has_errors
             or _is_sentinel(parsed_title)
@@ -335,6 +379,7 @@ class EpubDataExtractor:
             or parsed_category is None
             or parsed_publisher is None
             or _is_sentinel(parsed_language)
+            or (cover_output_dir is not None and cover_image_path is None)
         )
 
         return map_query_to_ebook_metadata(
@@ -351,4 +396,6 @@ class EpubDataExtractor:
             publisher=parsed_publisher,
             language=parsed_language,
             has_errors=has_errors,
+            cover_image_path=cover_image_path,
+            cover_image_mime_type=cover_image_mime_type,
         )

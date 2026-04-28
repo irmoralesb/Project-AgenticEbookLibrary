@@ -10,6 +10,7 @@ from extractors.tools.authors_extractor import AuthorsExtractor
 from extractors.tools.description_extractor import DescriptionExtractor
 from extractors.tools.category_extractor import CategoryExtractor
 from extractors.tools.language_extractor import LanguageExtractor
+from extractors.tools.cover_image_utils import find_existing_cover, guess_mime_type_from_suffix
 from extractors.models.models import CoverExtractionResult, EbookMetadata, map_query_to_ebook_metadata
 from extractors.models.errors import *
 
@@ -22,6 +23,9 @@ def _is_sentinel(value: str | None) -> bool:
 
 
 class PdfDataExtractor():
+    _COVER_DPI: int = 160
+    _COVER_FORMAT: str = "png"
+
     _EXTRACTOR_PAGE_WINDOWS: dict[str, int] = {
         "isbn": 5,
         "year": 5,
@@ -171,7 +175,41 @@ class PdfDataExtractor():
                 cause=exc,
             ) from exc
 
-    def extract_metadata(self, pdf_path: Path, number_of_pages_to_analize: int = 10) -> EbookMetadata:
+    def extract_and_save_cover_image(
+        self,
+        book_path: Path,
+        cover_output_dir: Path,
+        *,
+        prior_cover_path: str | None = None,
+    ) -> tuple[Path, str, bool]:
+        """Return ``(saved_path, mime_type, was_reused)``.
+
+        Checks for an existing cover image first; extracts and saves one only
+        when none is found. ``was_reused`` is ``True`` when no extraction ran.
+        """
+        cover_output_dir.mkdir(parents=True, exist_ok=True)
+        existing = find_existing_cover(book_path, cover_output_dir, prior_cover_path)
+        if existing is not None:
+            mime = guess_mime_type_from_suffix(existing) or "image/png"
+            return existing, mime, True
+
+        cover = self.extract_cover_image(
+            book_path,
+            render_dpi=self._COVER_DPI,
+            render_format=self._COVER_FORMAT,
+            use_embedded_image_fallback=False,
+        )
+        ext = cover.mime_type.split("/")[-1]
+        dest = cover_output_dir / f"{book_path.stem}.{ext}"
+        dest.write_bytes(cover.data)
+        return dest.resolve(), cover.mime_type, False
+
+    def extract_metadata(
+        self,
+        pdf_path: Path,
+        number_of_pages_to_analize: int = 10,
+        cover_output_dir: Path | None = None,
+    ) -> EbookMetadata:
         pdf_path = pdf_path.resolve()
         has_errors = False
 
@@ -236,6 +274,20 @@ class PdfDataExtractor():
             parsed_language = None
             has_errors = True
 
+        # --- Cover image ---
+        cover_image_path: str | None = None
+        cover_image_mime_type: str | None = None
+        if cover_output_dir is not None:
+            try:
+                _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(
+                    pdf_path, cover_output_dir
+                )
+                cover_image_path = str(_cover_path)
+            except Exception:
+                cover_image_path = None
+                cover_image_mime_type = None
+                has_errors = True
+
         has_errors = (
             has_errors
             or _is_sentinel(title_with_edition.title)
@@ -246,6 +298,7 @@ class PdfDataExtractor():
             or parsed_category is None
             or parsed_publisher is None
             or _is_sentinel(parsed_language)
+            or (cover_output_dir is not None and cover_image_path is None)
         )
 
         return map_query_to_ebook_metadata(
@@ -262,4 +315,6 @@ class PdfDataExtractor():
             publisher=parsed_publisher,
             language=parsed_language,
             has_errors=has_errors,
+            cover_image_path=cover_image_path,
+            cover_image_mime_type=cover_image_mime_type,
         )

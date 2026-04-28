@@ -78,6 +78,8 @@ def map_query_to_ebook_metadata(
     publisher: str | None,
     language: str | None,
     has_errors: bool,
+    cover_image_path: str | None = None,
+    cover_image_mime_type: str | None = None,
 ) -> EbookMetadata:
     """Assemble the final EbookMetadata from individually extracted fields."""
 
@@ -101,4 +103,6 @@ def map_query_to_ebook_metadata(
         publisher=_fallback_text(publisher, "Unknown"),
         language=_fallback_text(language, "en"),
         has_errors=has_errors,
+        cover_image_path=cover_image_path,
+        cover_image_mime_type=cover_image_mime_type,
     )
