@@ -47,6 +47,16 @@ def _strip_html(raw: bytes | str) -> str:
 
 
 class EpubDataExtractor:
+    _EXTRACTOR_SPINE_WINDOWS: dict[str, int] = {
+        "isbn": 5,
+        "year": 5,
+        "publisher": 5,
+        "authors": 6,
+        "language": 2,
+        "description": 12,
+        "category": 10,
+    }
+
     def __init__(
         self,
         title_extractor: TitleExtractor,
@@ -98,6 +108,36 @@ class EpubDataExtractor:
                 parts.append(_strip_html(content))
             count += 1
         return self._normalize("\n\n".join(parts))
+
+    def _get_text_range_from_spine(
+        self,
+        book: epub.EpubBook,
+        start_item: int,
+        end_item_exclusive: int,
+        max_chars: int = 12000,
+    ) -> str:
+        parts: list[str] = []
+        spine = list(book.spine)
+        total_items = len(spine)
+        start = max(0, min(start_item, total_items))
+        end = max(start, min(end_item_exclusive, total_items))
+
+        for index in range(start, end):
+            item_id, _ = spine[index]
+            item = book.get_item_with_id(item_id)
+            if item is None:
+                continue
+            content = item.get_content()
+            if content:
+                parts.append(_strip_html(content))
+        return self._normalize("\n\n".join(parts), max_chars=max_chars)
+
+    def _build_extractor_windows(self, book: epub.EpubBook, number_of_spine_items: int) -> dict[str, str]:
+        max_items = min(number_of_spine_items, len(book.spine))
+        return {
+            extractor_name: self._get_text_range_from_spine(book, 0, min(spine_items, max_items))
+            for extractor_name, spine_items in self._EXTRACTOR_SPINE_WINDOWS.items()
+        }
 
     def _parse_year_from_dc_date(self, date_str: str) -> int | None:
         """Extract a 4-digit year from common EPUB date formats (YYYY, YYYY-MM-DD)."""
@@ -185,7 +225,7 @@ class EpubDataExtractor:
             ) from exc
 
         spine_item_count = self.page_counter_extractor.get_total_spine_items_for_epub(book)
-        text_sample = self._get_text_from_spine(book, number_of_spine_items_to_analyse)
+        extractor_windows = self._build_extractor_windows(book, number_of_spine_items_to_analyse)
 
         # --- Title ---
         dc_titles = self._get_dc(book, "title")
@@ -211,7 +251,7 @@ class EpubDataExtractor:
             parsed_authors = dc_creators
         else:
             try:
-                parsed_authors = self.authors_extractor.get_authors(text_sample)
+                parsed_authors = self.authors_extractor.get_authors(extractor_windows["authors"])
             except Exception:
                 parsed_authors = []
                 has_errors = True
@@ -222,7 +262,7 @@ class EpubDataExtractor:
             parsed_language: str | None = dc_languages[0].strip()
         else:
             try:
-                parsed_language = self.language_extractor.get_language(text_sample)
+                parsed_language = self.language_extractor.get_language(extractor_windows["language"])
             except Exception:
                 parsed_language = None
                 has_errors = True
@@ -233,7 +273,7 @@ class EpubDataExtractor:
             parsed_publisher: str | None = dc_publishers[0].strip()
         else:
             try:
-                parsed_publisher = self.publisher_extractor.extract_publisher_from_text(text_sample)
+                parsed_publisher = self.publisher_extractor.extract_publisher_from_text(extractor_windows["publisher"])
             except Exception:
                 parsed_publisher = None
                 has_errors = True
@@ -248,7 +288,7 @@ class EpubDataExtractor:
                 break
         if parsed_isbn is None:
             try:
-                parsed_isbn = self.isbn_extractor.extract_isbn_from_text(text_sample)
+                parsed_isbn = self.isbn_extractor.extract_isbn_from_text(extractor_windows["isbn"])
             except Exception:
                 parsed_isbn = None
                 has_errors = True
@@ -262,7 +302,7 @@ class EpubDataExtractor:
                 break
         if parsed_year is None:
             try:
-                parsed_year = self.year_extractor.extract_year_from_text(text_sample)
+                parsed_year = self.year_extractor.extract_year_from_text(extractor_windows["year"])
             except Exception:
                 parsed_year = None
                 has_errors = True
@@ -273,14 +313,14 @@ class EpubDataExtractor:
             parsed_description: str | None = dc_descriptions[0].strip()
         else:
             try:
-                parsed_description = self.description_extractor.get_description(text_sample)
+                parsed_description = self.description_extractor.get_description(extractor_windows["description"])
             except Exception:
                 parsed_description = None
                 has_errors = True
 
         # --- Category (always via LLM — not in OPF standard) ---
         try:
-            parsed_category = self.category_extractor.get_category(text_sample)
+            parsed_category = self.category_extractor.get_category(extractor_windows["category"])
         except Exception:
             parsed_category = None
             has_errors = True

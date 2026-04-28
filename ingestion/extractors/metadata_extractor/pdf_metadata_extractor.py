@@ -22,6 +22,16 @@ def _is_sentinel(value: str | None) -> bool:
 
 
 class PdfDataExtractor():
+    _EXTRACTOR_PAGE_WINDOWS: dict[str, int] = {
+        "isbn": 5,
+        "year": 5,
+        "publisher": 5,
+        "authors": 6,
+        "language": 2,
+        "description": 12,
+        "category": 10,
+    }
+
     def __init__(
         self,
         title_extractor: TitleExtractor,
@@ -58,6 +68,28 @@ class PdfDataExtractor():
             parts.append(page.get_text())
         pages_to_analize = "\n\n".join(parts)
         return self._normalize(pages_to_analize)
+
+    def _get_pages_range_to_analize(
+        self,
+        pdf_file: fitz.Document,
+        start_page: int,
+        end_page_exclusive: int,
+        max_chars: int = 12000,
+    ) -> str:
+        total_pages = len(pdf_file)
+        start = max(0, min(start_page, total_pages))
+        end = max(start, min(end_page_exclusive, total_pages))
+        parts: list[str] = []
+        for page_index in range(start, end):
+            parts.append(pdf_file[page_index].get_text())
+        return self._normalize("\n\n".join(parts), max_chars=max_chars)
+
+    def _build_extractor_windows(self, pdf_file: fitz.Document, number_of_pages: int) -> dict[str, str]:
+        max_pages = min(number_of_pages, len(pdf_file))
+        return {
+            extractor_name: self._get_pages_range_to_analize(pdf_file, 0, min(pages, max_pages))
+            for extractor_name, pages in self._EXTRACTOR_PAGE_WINDOWS.items()
+        }
 
     def _extract_largest_image_from_page(self, pdf_file: fitz.Document, page: fitz.Page) -> CoverExtractionResult | None:
         images = page.get_images(full=True)
@@ -147,7 +179,7 @@ class PdfDataExtractor():
             with fitz.open(pdf_path) as pdf_file:
                 pdf_total_pages = self.page_counter_extractor.get_total_page_number_for_pdf(
                     pdf_file)
-                pages_to_analize = self._get_pages_to_analize(
+                extractor_windows = self._build_extractor_windows(
                     pdf_file, number_of_pages_to_analize)
         except Exception as exc:
             has_errors = True
@@ -163,43 +195,43 @@ class PdfDataExtractor():
                 file_name=pdf_path.name, stage="title_extraction", cause=exc) from exc
 
         try:
-            parsed_isbn = self.isbn_extractor.extract_isbn_from_text(pages_to_analize)
+            parsed_isbn = self.isbn_extractor.extract_isbn_from_text(extractor_windows["isbn"])
         except Exception:
             parsed_isbn = None
             has_errors = True
 
         try:
-            parsed_year = self.year_extractor.extract_year_from_text(pages_to_analize)
+            parsed_year = self.year_extractor.extract_year_from_text(extractor_windows["year"])
         except Exception:
             parsed_year = None
             has_errors = True
 
         try:
-            parsed_publisher = self.publisher_extractor.extract_publisher_from_text(pages_to_analize)
+            parsed_publisher = self.publisher_extractor.extract_publisher_from_text(extractor_windows["publisher"])
         except Exception:
             parsed_publisher = None
             has_errors = True
 
         try:
-            parsed_authors = self.authors_extractor.get_authors(pages_to_analize)
+            parsed_authors = self.authors_extractor.get_authors(extractor_windows["authors"])
         except Exception:
             parsed_authors = []
             has_errors = True
 
         try:
-            parsed_description = self.description_extractor.get_description(pages_to_analize)
+            parsed_description = self.description_extractor.get_description(extractor_windows["description"])
         except Exception:
             parsed_description = None
             has_errors = True
 
         try:
-            parsed_category = self.category_extractor.get_category(pages_to_analize)
+            parsed_category = self.category_extractor.get_category(extractor_windows["category"])
         except Exception:
             parsed_category = None
             has_errors = True
 
         try:
-            parsed_language = self.language_extractor.get_language(pages_to_analize)
+            parsed_language = self.language_extractor.get_language(extractor_windows["language"])
         except Exception:
             parsed_language = None
             has_errors = True
