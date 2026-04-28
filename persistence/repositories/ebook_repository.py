@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Protocol, runtime_checkable
 
 from sqlalchemy import delete as sa_delete
@@ -84,9 +85,13 @@ class SqlAlchemyEbookRepository:  # implements EbookRepository
         row = self._session.get(EbookORM, ebook_id)
         if row is None:
             return None
+        did_update = False
         for field, value in data.items():
             if field in _UPDATABLE_FIELDS:
                 setattr(row, field, value)
+                did_update = True
+        if did_update:
+            row.updated_on = datetime.now(timezone.utc)
         self._session.flush()
         return row
 

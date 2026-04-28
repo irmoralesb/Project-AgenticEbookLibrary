@@ -1,10 +1,13 @@
 import uuid
+from datetime import datetime
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    DateTime,
     Integer,
     String,
     Uuid,
+    func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -81,3 +84,16 @@ class EbookORM(Base):
     cover_image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     cover_image_mime_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     has_errors: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_on: Mapped[datetime] = mapped_column(
+        "CreatedOn",
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.timezone("utc", func.now()),
+    )
+    updated_on: Mapped[datetime] = mapped_column(
+        "UpdatedOn",
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.timezone("utc", func.now()),
+        onupdate=func.timezone("utc", func.now()),
+    )
