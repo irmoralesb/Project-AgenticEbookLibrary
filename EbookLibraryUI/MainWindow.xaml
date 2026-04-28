@@ -49,6 +49,17 @@
                         BorderThickness="0"
                         Cursor="Hand"
                         Click="NavIngest_Click" />
+
+                <Button x:Name="NavSettingsButton"
+                        Content="⚙  Settings"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Padding="16,10"
+                        FontSize="14"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Click="NavSettings_Click" />
             </StackPanel>
         </Border>
 

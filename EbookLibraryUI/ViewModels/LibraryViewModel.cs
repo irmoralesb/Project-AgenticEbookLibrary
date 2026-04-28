@@ -9,6 +9,7 @@ namespace EbookLibraryUI.ViewModels;
 public partial class LibraryViewModel : ObservableObject
 {
     private readonly IEbookApiService _api;
+    private readonly IAppSettingsService _appSettings;
 
     public ObservableCollection<EbookDto> Books { get; } = [];
 
@@ -22,13 +23,16 @@ public partial class LibraryViewModel : ObservableObject
     private EbookDto? _selectedBook;
 
     [ObservableProperty]
-    private string _coverImageBasePath = EbookDto.CoverImageRootPath;
+    private string _coverImagePath = string.Empty;
 
     public event Action<EbookDto>? EditRequested;
 
-    public LibraryViewModel(IEbookApiService api)
+    public LibraryViewModel(IEbookApiService api, IAppSettingsService appSettings)
     {
         _api = api;
+        _appSettings = appSettings;
+        CoverImagePath = _appSettings.CoverImagePath;
+        _appSettings.CoverImagePathChanged += OnCoverImagePathChanged;
     }
 
     [RelayCommand]
@@ -55,26 +59,6 @@ public partial class LibraryViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task ApplyCoverImagePathAsync()
-    {
-        var normalizedPath = string.IsNullOrWhiteSpace(CoverImageBasePath)
-            ? string.Empty
-            : CoverImageBasePath.Trim().TrimEnd('/');
-
-        if (string.IsNullOrWhiteSpace(normalizedPath))
-        {
-            StatusMessage = "Image path cannot be empty.";
-            return;
-        }
-
-        EbookDto.CoverImageRootPath = normalizedPath;
-        CoverImageBasePath = normalizedPath;
-        StatusMessage = $"Image path updated: {normalizedPath}";
-
-        await LoadBooksAsync();
-    }
-
-    [RelayCommand]
     private async Task DeleteBookAsync(EbookDto book)
     {
         try
@@ -93,5 +77,12 @@ public partial class LibraryViewModel : ObservableObject
     private void EditBook(EbookDto book)
     {
         EditRequested?.Invoke(book);
+    }
+
+    private void OnCoverImagePathChanged(object? sender, string value)
+    {
+        CoverImagePath = value;
+        EbookDto.CoverImageRootPath = value;
+        _ = LoadBooksAsync();
     }
 }

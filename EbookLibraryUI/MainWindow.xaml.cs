@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using EbookLibraryUI.Models;
+using EbookLibraryUI.Services;
 using EbookLibraryUI.ViewModels;
 using EbookLibraryUI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ public partial class MainWindow : Window
 {
     private LibraryView? _libraryView;
     private IngestView? _ingestView;
+    private SettingsView? _settingsView;
     private EbookDetailView? _detailView;
 
     public MainWindow()
@@ -25,6 +27,13 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         BuildViews();
+        var appSettings = App.Services.GetRequiredService<IAppSettingsService>();
+        if (!appSettings.SettingsFileExists || !appSettings.HasConfiguredCoverImagePath)
+        {
+            PageFrame.Navigate(_settingsView);
+            return;
+        }
+
         ShowLibraryView(refresh: true);
     }
 
@@ -37,6 +46,9 @@ public partial class MainWindow : Window
         var ingestVm = App.Services.GetRequiredService<IngestViewModel>();
         _ingestView = new IngestView { DataContext = ingestVm };
 
+        var settingsVm = App.Services.GetRequiredService<SettingsViewModel>();
+        _settingsView = new SettingsView { DataContext = settingsVm };
+
         var detailVm = App.Services.GetRequiredService<EbookDetailViewModel>();
         detailVm.SaveCompleted  += () => ShowLibraryView(refresh: true);
         detailVm.CancelRequested += () => ShowLibraryView(refresh: false);
@@ -48,6 +60,9 @@ public partial class MainWindow : Window
 
     private void NavIngest_Click(object sender, RoutedEventArgs e) =>
         PageFrame.Navigate(_ingestView);
+
+    private void NavSettings_Click(object sender, RoutedEventArgs e) =>
+        PageFrame.Navigate(_settingsView);
 
     private void ShowLibraryView(bool refresh)
     {

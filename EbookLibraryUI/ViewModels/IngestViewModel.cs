@@ -11,6 +11,7 @@ public partial class IngestViewModel : ObservableObject
 {
     private readonly IEbookApiService _api;
     private readonly IFolderPickerService _folderPicker;
+    private readonly IAppSettingsService _appSettings;
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<string> ProgressLog { get; } = [];
@@ -32,17 +33,15 @@ public partial class IngestViewModel : ObservableObject
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
-    private string _coverImagePath = EbookDto.CoverImageRootPath;
+    private string _coverImagePath = string.Empty;
 
-    public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker)
+    public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker, IAppSettingsService appSettings)
     {
         _api = api;
         _folderPicker = folderPicker;
-    }
-
-    partial void OnCoverImagePathChanged(string value)
-    {
-        EbookDto.CoverImageRootPath = value?.Trim() ?? string.Empty;
+        _appSettings = appSettings;
+        CoverImagePath = _appSettings.CoverImagePath;
+        _appSettings.CoverImagePathChanged += OnCoverImagePathChanged;
     }
 
     [RelayCommand]
@@ -65,8 +64,11 @@ public partial class IngestViewModel : ObservableObject
 
         try
         {
-            var normalizedCoverImagePath = string.IsNullOrWhiteSpace(CoverImagePath) ? null : CoverImagePath.Trim();
-            EbookDto.CoverImageRootPath = normalizedCoverImagePath ?? string.Empty;
+            var normalizedCoverImagePath = string.IsNullOrWhiteSpace(_appSettings.CoverImagePath)
+                ? null
+                : _appSettings.CoverImagePath.Trim();
+            CoverImagePath = normalizedCoverImagePath ?? string.Empty;
+            EbookDto.CoverImageRootPath = CoverImagePath;
 
             var startResponse = await _api.StartIngestAsync(new IngestRequestDto
             {
@@ -106,5 +108,11 @@ public partial class IngestViewModel : ObservableObject
     private void CancelIngest()
     {
         _cts?.Cancel();
+    }
+
+    private void OnCoverImagePathChanged(object? sender, string value)
+    {
+        CoverImagePath = value;
+        EbookDto.CoverImageRootPath = value;
     }
 }

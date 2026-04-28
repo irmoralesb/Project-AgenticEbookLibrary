@@ -25,14 +25,11 @@
             <TextBlock Text="Image path:"
                        VerticalAlignment="Center"
                        Margin="8,0,8,0" />
-            <TextBox Width="260"
-                     Text="{Binding CoverImageBasePath, UpdateSourceTrigger=PropertyChanged}"
-                     VerticalContentAlignment="Center"
-                     Margin="0,0,8,0" />
-            <Button Content="Apply"
-                    Style="{StaticResource SecondaryButtonStyle}"
-                    Command="{Binding ApplyCoverImagePathCommand}"
-                    Margin="0,0,12,0" />
+            <TextBlock Width="320"
+                       Text="{Binding CoverImagePath}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="0,0,12,0" />
             <ProgressBar IsIndeterminate="True"
                          Width="100" Height="4"
                          VerticalAlignment="Center"

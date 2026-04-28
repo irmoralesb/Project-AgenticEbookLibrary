@@ -19,6 +19,10 @@ public partial class App : Application
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
 
+        var appSettings = Services.GetRequiredService<IAppSettingsService>();
+        appSettings.InitializeAsync().GetAwaiter().GetResult();
+        EbookDto.CoverImageRootPath = appSettings.CoverImagePath;
+
         var window = Services.GetRequiredService<MainWindow>();
         window.Show();
     }
@@ -33,11 +37,13 @@ public partial class App : Application
         });
 
         services.AddSingleton<IFolderPickerService, WindowsFolderPickerService>();
+        services.AddSingleton<IAppSettingsService, AppSettingsService>();
 
         // ViewModels
         services.AddTransient<LibraryViewModel>();
         services.AddTransient<EbookDetailViewModel>();
         services.AddTransient<IngestViewModel>();
+        services.AddTransient<SettingsViewModel>();
 
         // Views
         services.AddSingleton<MainWindow>();
