@@ -26,6 +26,8 @@ public partial class EbookDetailViewModel : ObservableObject
         "Databases",
         "AI/ML",
         "Project Management",
+        "Video Game Development",
+        "Drawing",
         "Other",
     ];
 

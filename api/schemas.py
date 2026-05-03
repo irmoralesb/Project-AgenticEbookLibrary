@@ -24,6 +24,8 @@ Category = Literal[
     "Databases",
     "AI/ML",
     "Project Management",
+    "Video Game Development",
+    "Drawing",
     "Other",
 ]
 

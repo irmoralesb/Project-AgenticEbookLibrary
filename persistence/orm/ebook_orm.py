@@ -28,6 +28,8 @@ _VALID_CATEGORIES = (
     "Databases",
     "AI/ML",
     "Project Management",
+    "Video Game Development",
+    "Drawing",
     "Other",
 )
 

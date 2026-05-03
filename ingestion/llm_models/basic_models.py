@@ -149,6 +149,8 @@ class BasicLocalModel():
             - Databases               -> MS SQL, PostgreSQL, MongoDB
             - AI/ML                   -> Machine Learning, LLMs, Neural Networks
             - Project Management      -> Agile, Scrum, Kanban
+            - Video Game Development  -> Unity, Maya, Music, Coding, Literature, Others
+            - Drawing                 -> Technics, Drawing Animals, Drawing People
 
             Rules:
             - Output ONLY the JSON object that matches the schema.

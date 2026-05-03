@@ -36,7 +36,7 @@ class QueryCategoryMetadata(BaseModel):
             "Programming, Software Engineering & Design Patterns, Data Structures & Algorithms, "
             "Web Development, Mobile App Development, Cybersecurity & Ethical Hacking, DevOps, "
             "Operating Systems, Cloud Services, Architecture, Networking, Databases, AI/ML, "
-            "Project Management, Other."
+            "Project Management, Video Game Development, Drawing, Other."
         ),
     )
     subcategory: str | None = Field(
@@ -58,6 +58,8 @@ class QueryCategoryMetadata(BaseModel):
             "Databases -> MS SQL/PostgreSQL/MongoDB, "
             "AI/ML -> Machine Learning/LLMs/Neural Networks, "
             "Project Management -> Agile Development/Scrum/Kanban/Extreme Programming. "
+            "Video Game Development -> Unity/Maya/Music/Coding/Literature/Others"
+            "Drawing -> Technics/Drawing Animals/Drawing People"
             "Return 'Other' when none applies."
         ),
     )
