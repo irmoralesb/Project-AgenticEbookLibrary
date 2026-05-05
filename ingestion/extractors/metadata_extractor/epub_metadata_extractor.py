@@ -49,9 +49,9 @@ def _strip_html(raw: bytes | str) -> str:
 
 class EpubDataExtractor:
     _EXTRACTOR_SPINE_WINDOWS: dict[str, int] = {
-        "isbn": 5,
-        "year": 5,
-        "publisher": 5,
+        "isbn": 6,
+        "year": 6,
+        "publisher": 6,
         "authors": 6,
         "language": 2,
         "description": 12,
@@ -133,8 +133,8 @@ class EpubDataExtractor:
                 parts.append(_strip_html(content))
         return self._normalize("\n\n".join(parts), max_chars=max_chars)
 
-    def _build_extractor_windows(self, book: epub.EpubBook, number_of_spine_items: int) -> dict[str, str]:
-        max_items = min(number_of_spine_items, len(book.spine))
+    def _build_extractor_windows(self, book: epub.EpubBook) -> dict[str, str]:
+        max_items = len(book.spine)
         return {
             extractor_name: self._get_text_range_from_spine(book, 0, min(spine_items, max_items))
             for extractor_name, spine_items in self._EXTRACTOR_SPINE_WINDOWS.items()
@@ -238,7 +238,6 @@ class EpubDataExtractor:
     def extract_metadata(
         self,
         epub_path: Path,
-        number_of_spine_items_to_analyse: int = 10,
         cover_output_dir: Path | None = None,
     ) -> EbookMetadata:
         epub_path = epub_path.resolve()
@@ -255,7 +254,7 @@ class EpubDataExtractor:
             ) from exc
 
         spine_item_count = self.page_counter_extractor.get_total_spine_items_for_epub(book)
-        extractor_windows = self._build_extractor_windows(book, number_of_spine_items_to_analyse)
+        extractor_windows = self._build_extractor_windows(book)
 
         # --- Title ---
         dc_titles = self._get_dc(book, "title")

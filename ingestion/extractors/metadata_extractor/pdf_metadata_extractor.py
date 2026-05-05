@@ -27,9 +27,9 @@ class PdfDataExtractor():
     _COVER_FORMAT: str = "png"
 
     _EXTRACTOR_PAGE_WINDOWS: dict[str, int] = {
-        "isbn": 5,
-        "year": 5,
-        "publisher": 5,
+        "isbn": 6,
+        "year": 6,
+        "publisher": 6,
         "authors": 6,
         "language": 2,
         "description": 12,
@@ -88,8 +88,8 @@ class PdfDataExtractor():
             parts.append(pdf_file[page_index].get_text())
         return self._normalize("\n\n".join(parts), max_chars=max_chars)
 
-    def _build_extractor_windows(self, pdf_file: fitz.Document, number_of_pages: int) -> dict[str, str]:
-        max_pages = min(number_of_pages, len(pdf_file))
+    def _build_extractor_windows(self, pdf_file: fitz.Document) -> dict[str, str]:
+        max_pages = len(pdf_file)
         return {
             extractor_name: self._get_pages_range_to_analize(pdf_file, 0, min(pages, max_pages))
             for extractor_name, pages in self._EXTRACTOR_PAGE_WINDOWS.items()
@@ -207,7 +207,6 @@ class PdfDataExtractor():
     def extract_metadata(
         self,
         pdf_path: Path,
-        number_of_pages_to_analize: int = 10,
         cover_output_dir: Path | None = None,
     ) -> EbookMetadata:
         pdf_path = pdf_path.resolve()
@@ -218,7 +217,7 @@ class PdfDataExtractor():
                 pdf_total_pages = self.page_counter_extractor.get_total_page_number_for_pdf(
                     pdf_file)
                 extractor_windows = self._build_extractor_windows(
-                    pdf_file, number_of_pages_to_analize)
+                    pdf_file)
         except Exception as exc:
             has_errors = True
             raise PdfReadError("Failed to open/read pdf",

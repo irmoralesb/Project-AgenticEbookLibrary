@@ -55,7 +55,6 @@ def test_run_ingestion_passes_cover_output_dir_to_extract_metadata(
     assert result == {"succeeded": 1, "failed": 0}
     extractor.extract_metadata.assert_called_once_with(
         book_path,
-        5,  # PAGES_TO_ANALIZE
         cover_dir.resolve(),
     )
 

@@ -15,7 +15,6 @@ from dependency_injection.dependency_utils import (
 
 load_dotenv()
 
-PAGES_TO_ANALIZE = 5
 COVER_IMAGE_FOLDER = "cover_images"
 
 
@@ -83,7 +82,7 @@ def run_ingestion(
         book_path = Path(ebook_path)
         _emit(f"Processing: {book_path.name}")
         try:
-            metadata = extractor.extract_metadata(book_path, PAGES_TO_ANALIZE, cover_output_dir)
+            metadata = extractor.extract_metadata(book_path, cover_output_dir)
 
             for session in get_db_session():
                 repo = get_ebook_repository(session)

@@ -11,7 +11,7 @@ public partial class App : Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -20,7 +20,9 @@ public partial class App : Application
         Services = services.BuildServiceProvider();
 
         var appSettings = Services.GetRequiredService<IAppSettingsService>();
-        appSettings.InitializeAsync().GetAwaiter().GetResult();
+        // Do not block the UI thread with GetResult() — async continuations resume on the same
+        // dispatcher and deadlock with the blocked thread, so Show() never runs.
+        await appSettings.InitializeAsync();
         EbookDto.CoverImageRootPath = appSettings.CoverImagePath;
 
         var window = Services.GetRequiredService<MainWindow>();
