@@ -50,10 +50,16 @@ class PublisherExtractor:
         # PDF text often uses curly/smart apostrophes; normalize to straight so patterns match.
         return text.replace("\u2019", "'").replace("\u2018", "'").replace("\u02bc", "'")
 
-    def extract_publisher_from_text(self, text: str) -> str | None:
-        match = self._pattern.search(self._normalize_quotes(text))
+    def extract_publisher_from_text(self, texts: list[str]) -> str | None:
+
+        for text_range in texts:
+            match = self._pattern.search(self._normalize_quotes(text_range))
+            if match:
+                break
+
         if not match:
             return None
+            
         # Return the canonical casing from our list, not whatever the PDF used.
         matched_lower = match.group(1).lower()
         for canonical in self._KNOWN_PUBLISHERS:

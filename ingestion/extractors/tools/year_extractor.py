@@ -12,10 +12,11 @@ class YearExtractor:
     ]
     _VALID_RANGE = range(1950, 2051)
 
-    def extract_year_from_text(self, text: str) -> int | None:
-        for pattern in self._PATTERNS:
-            for match in pattern.finditer(text):
-                year = int(match.group(1))
-                if year in self._VALID_RANGE:
-                    return year
+    def extract_year_from_text(self, texts: list[str]) -> int | None:
+        for text_range in texts:
+            for pattern in self._PATTERNS:
+                for match in pattern.finditer(text_range):
+                    year = int(match.group(1))
+                    if year in self._VALID_RANGE:
+                        return year
         return None

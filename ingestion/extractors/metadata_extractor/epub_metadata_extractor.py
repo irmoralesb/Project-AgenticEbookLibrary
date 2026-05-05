@@ -48,14 +48,15 @@ def _strip_html(raw: bytes | str) -> str:
 
 
 class EpubDataExtractor:
-    _EXTRACTOR_SPINE_WINDOWS: dict[str, int] = {
-        "isbn": 6,
-        "year": 6,
-        "publisher": 6,
-        "authors": 6,
-        "language": 2,
-        "description": 12,
-        "category": 10,
+    # Spine-item bounds mirror PdfDataExtractor._EXTRACTOR_PAGE_WINDOWS (PDF pages).
+    _EXTRACTOR_SPINE_WINDOWS: dict[str, tuple[int, int]] = {
+        "isbn": (6, 9),
+        "year": (6, 9),
+        "publisher": (6, 9),
+        "authors": (6, 9),
+        "language": (2, 4),
+        "description": (12, 14),
+        "category": (10, 15),
     }
 
     def __init__(
@@ -133,12 +134,18 @@ class EpubDataExtractor:
                 parts.append(_strip_html(content))
         return self._normalize("\n\n".join(parts), max_chars=max_chars)
 
-    def _build_extractor_windows(self, book: epub.EpubBook) -> dict[str, str]:
+    def _build_extractor_windows(self, book: epub.EpubBook) -> dict[str, list[str]]:
         max_items = len(book.spine)
-        return {
-            extractor_name: self._get_text_range_from_spine(book, 0, min(spine_items, max_items))
-            for extractor_name, spine_items in self._EXTRACTOR_SPINE_WINDOWS.items()
-        }
+        extractor_dict: dict[str, list[str]] = {}
+        for name, spine_ranges in self._EXTRACTOR_SPINE_WINDOWS.items():
+            a = min(spine_ranges[0], max_items)
+            b = min(spine_ranges[1], max_items)
+            range_list: list[str] = [
+                self._get_text_range_from_spine(book, 0, a),
+                self._get_text_range_from_spine(book, a, b),
+            ]
+            extractor_dict[name] = range_list
+        return extractor_dict
 
     def _parse_year_from_dc_date(self, date_str: str) -> int | None:
         """Extract a 4-digit year from common EPUB date formats (YYYY, YYYY-MM-DD)."""

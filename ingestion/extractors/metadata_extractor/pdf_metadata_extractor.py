@@ -26,14 +26,14 @@ class PdfDataExtractor():
     _COVER_DPI: int = 160
     _COVER_FORMAT: str = "png"
 
-    _EXTRACTOR_PAGE_WINDOWS: dict[str, int] = {
-        "isbn": 6,
-        "year": 6,
-        "publisher": 6,
-        "authors": 6,
-        "language": 2,
-        "description": 12,
-        "category": 10,
+    _EXTRACTOR_PAGE_WINDOWS: dict[str, (int, int)] = {
+        "isbn": (6, 9),
+        "year": (6, 9),
+        "publisher": (6, 9),
+        "authors": (6, 9),
+        "language": (2, 4),
+        "description": (12, 14),
+        "category": (10, 15),
     }
 
     def __init__(
@@ -88,12 +88,20 @@ class PdfDataExtractor():
             parts.append(pdf_file[page_index].get_text())
         return self._normalize("\n\n".join(parts), max_chars=max_chars)
 
-    def _build_extractor_windows(self, pdf_file: fitz.Document) -> dict[str, str]:
+    def _build_extractor_windows(self, pdf_file: fitz.Document) -> dict[str, list[str]]:
         max_pages = len(pdf_file)
-        return {
-            extractor_name: self._get_pages_range_to_analize(pdf_file, 0, min(pages, max_pages))
-            for extractor_name, pages in self._EXTRACTOR_PAGE_WINDOWS.items()
-        }
+
+        extractor_dict = {}
+
+        for name, page_ranges in self._EXTRACTOR_PAGE_WINDOWS.items():
+            range_list: list[str] = []
+            range_list.append(self._get_pages_range_to_analize(
+                pdf_file, 0, min(page_ranges[0], max_pages)))
+            range_list.append(self._get_pages_range_to_analize(pdf_file, min(
+                page_ranges[0], max_pages), min(page_ranges[1], max_pages)))
+            extractor_dict[name] = range_list
+
+        return extractor_dict
 
     def _extract_largest_image_from_page(self, pdf_file: fitz.Document, page: fitz.Page) -> CoverExtractionResult | None:
         images = page.get_images(full=True)
@@ -163,7 +171,8 @@ class PdfDataExtractor():
                 if not use_embedded_image_fallback:
                     return rendered
 
-                embedded = self._extract_largest_image_from_page(pdf_file, first_page)
+                embedded = self._extract_largest_image_from_page(
+                    pdf_file, first_page)
                 return embedded if embedded is not None else rendered
         except PdfReadError:
             raise
@@ -188,7 +197,8 @@ class PdfDataExtractor():
         when none is found. ``was_reused`` is ``True`` when no extraction ran.
         """
         cover_output_dir.mkdir(parents=True, exist_ok=True)
-        existing = find_existing_cover(book_path, cover_output_dir, prior_cover_path)
+        existing = find_existing_cover(
+            book_path, cover_output_dir, prior_cover_path)
         if existing is not None:
             mime = guess_mime_type_from_suffix(existing) or "image/png"
             return existing, mime, True
@@ -216,15 +226,15 @@ class PdfDataExtractor():
             with fitz.open(pdf_path) as pdf_file:
                 pdf_total_pages = self.page_counter_extractor.get_total_page_number_for_pdf(
                     pdf_file)
-                extractor_windows = self._build_extractor_windows(
-                    pdf_file)
+                extractor_windows = self._build_extractor_windows(pdf_file)
         except Exception as exc:
             has_errors = True
             raise PdfReadError("Failed to open/read pdf",
                                file_name=pdf_path.name, stage="pdf_read", cause=exc) from exc
 
         try:
-            title_with_edition = self.title_extractor.get_title_and_edition(pdf_path.name)
+            title_with_edition = self.title_extractor.get_title_and_edition(
+                pdf_path.name)
         except Exception as exc:
             has_errors = True
             raise MetadataEnrichmentError(
@@ -232,43 +242,52 @@ class PdfDataExtractor():
                 file_name=pdf_path.name, stage="title_extraction", cause=exc) from exc
 
         try:
-            parsed_isbn = self.isbn_extractor.extract_isbn_from_text(extractor_windows["isbn"])
+
+            parsed_isbn = self.isbn_extractor.extract_isbn_from_text(
+                extractor_windows["isbn"])
+
         except Exception:
             parsed_isbn = None
             has_errors = True
 
         try:
-            parsed_year = self.year_extractor.extract_year_from_text(extractor_windows["year"])
+            parsed_year = self.year_extractor.extract_year_from_text(
+                extractor_windows["year"])
         except Exception:
             parsed_year = None
             has_errors = True
 
         try:
-            parsed_publisher = self.publisher_extractor.extract_publisher_from_text(extractor_windows["publisher"])
+            parsed_publisher = self.publisher_extractor.extract_publisher_from_text(
+                extractor_windows["publisher"])
         except Exception:
             parsed_publisher = None
             has_errors = True
 
         try:
-            parsed_authors = self.authors_extractor.get_authors(extractor_windows["authors"])
+            parsed_authors = self.authors_extractor.get_authors(
+                extractor_windows["authors"])
         except Exception:
             parsed_authors = []
             has_errors = True
 
         try:
-            parsed_description = self.description_extractor.get_description(extractor_windows["description"])
+            parsed_description = self.description_extractor.get_description(
+                extractor_windows["description"])
         except Exception:
             parsed_description = None
             has_errors = True
 
         try:
-            parsed_category = self.category_extractor.get_category(extractor_windows["category"])
+            parsed_category = self.category_extractor.get_category(
+                extractor_windows["category"])
         except Exception:
             parsed_category = None
             has_errors = True
 
         try:
-            parsed_language = self.language_extractor.get_language(extractor_windows["language"])
+            parsed_language = self.language_extractor.get_language(
+                extractor_windows["language"])
         except Exception:
             parsed_language = None
             has_errors = True

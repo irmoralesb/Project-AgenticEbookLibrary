@@ -6,5 +6,10 @@ class CategoryExtractor:
     def __init__(self, llm: BasicLocalModel) -> None:
         self.llm = llm
 
-    def get_category(self, text: str) -> QueryCategoryMetadata:
-        return self.llm.extract_category(text)
+    def get_category(self, texts: list[str]) -> QueryCategoryMetadata:
+        result: str = ""
+        for text_range in texts:
+            result = self.llm.extract_category(text_range)
+            if result.category is not "Other":
+                return result
+        return result

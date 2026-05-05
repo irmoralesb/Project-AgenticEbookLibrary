@@ -17,7 +17,8 @@ class IsbnExtractor:
         return re.sub(r"\s+", "", isbn).upper()
 
 
-    def extract_isbn_from_text(self, text: str) -> str | None:
-        for match in self.ISBN_PATTERN.finditer(text):
-            return self._normalize_isbn(match.group(1))
+    def extract_isbn_from_text(self, texts: list[str]) -> str | None:
+        for text_range in texts:
+            for match in self.ISBN_PATTERN.finditer(text_range):
+                return self._normalize_isbn(match.group(1))
         return None
