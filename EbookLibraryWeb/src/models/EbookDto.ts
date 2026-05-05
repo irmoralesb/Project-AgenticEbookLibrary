@@ -14,6 +14,7 @@ export interface EbookDto {
   language: string | null;
   page_count: number | null;
   file_name: string | null;
+  file_path: string | null;
   cover_image_path: string | null;
   cover_image_mime_type: string | null;
   has_errors: boolean;

@@ -321,6 +321,7 @@ class PdfDataExtractor():
             title=title_with_edition.title,
             edition=title_with_edition.edition,
             file_name=pdf_path.name,
+            file_path=str(pdf_path),
             page_count=pdf_total_pages,
             isbn=parsed_isbn,
             authors=parsed_authors,

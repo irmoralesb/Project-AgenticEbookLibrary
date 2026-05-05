@@ -69,6 +69,7 @@ def map_query_to_ebook_metadata(
     *,
     title: str,
     file_name: str,
+    file_path: str | None = None,
     page_count: int | None = None,
     edition: str = "Not Specified",
     isbn: str | None,
@@ -94,6 +95,7 @@ def map_query_to_ebook_metadata(
     return EbookMetadata(
         title=_fallback_text(title, "Not Found"),
         file_name=_fallback_text(file_name, "Not Found"),
+        file_path=file_path.strip() if file_path and file_path.strip() else None,
         page_count=page_count,
         edition=_fallback_text(edition, "Not Specified"),
         isbn=_fallback_text(isbn, "Not Found"),

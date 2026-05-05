@@ -46,6 +46,7 @@ class EbookResponse(BaseModel):
     language: str | None
     page_count: int | None
     file_name: str | None
+    file_path: str | None
     cover_image_path: str | None
     cover_image_mime_type: str | None
     has_errors: bool
@@ -69,6 +70,7 @@ class EbookUpdateRequest(BaseModel):
     edition: str | None = Field(default=None, max_length=20)
     language: str | None = Field(default=None, max_length=10)
     page_count: int | None = Field(default=None, ge=0)
+    file_path: str | None = Field(default=None, max_length=2048)
     has_errors: bool | None = None
 
 

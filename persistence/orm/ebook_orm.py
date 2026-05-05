@@ -83,6 +83,7 @@ class EbookORM(Base):
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    file_path: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     cover_image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     cover_image_mime_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     has_errors: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

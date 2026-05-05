@@ -407,6 +407,7 @@ class EpubDataExtractor:
             title=parsed_title,
             edition=parsed_edition if dc_titles else parsed_edition,
             file_name=epub_path.name,
+            file_path=str(epub_path),
             page_count=spine_item_count,
             isbn=parsed_isbn,
             authors=parsed_authors,

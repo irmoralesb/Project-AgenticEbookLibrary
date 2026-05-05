@@ -44,6 +44,9 @@ public class EbookDto
     [JsonPropertyName("file_name")]
     public string? FileName { get; set; }
 
+    [JsonPropertyName("file_path")]
+    public string? FilePath { get; set; }
+
     [JsonPropertyName("cover_image_path")]
     public string? CoverImagePath { get; set; }
 

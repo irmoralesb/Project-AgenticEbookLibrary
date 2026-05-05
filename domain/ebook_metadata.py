@@ -78,6 +78,11 @@ class EbookMetadata(BaseModel):
     file_name: str | None = Field(
         default="Not Found", max_length=512, description="The Pdf file name"
     )
+    file_path: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="Absolute path to the ebook file on disk",
+    )
     cover_image_path: str | None = Field(
         default=None, max_length=1024, description="Stored path for extracted cover image"
     )

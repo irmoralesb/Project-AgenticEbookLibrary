@@ -23,6 +23,7 @@ _UPDATABLE_FIELDS = frozenset(
         "edition",
         "language",
         "page_count",
+        "file_path",
         "cover_image_path",
         "cover_image_mime_type",
         "has_errors",
