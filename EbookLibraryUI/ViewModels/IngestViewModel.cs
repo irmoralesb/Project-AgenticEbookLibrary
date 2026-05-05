@@ -11,7 +11,6 @@ public partial class IngestViewModel : ObservableObject
 {
     private readonly IEbookApiService _api;
     private readonly IFolderPickerService _folderPicker;
-    private readonly IAppSettingsService _appSettings;
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<string> ProgressLog { get; } = [];
@@ -27,16 +26,10 @@ public partial class IngestViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
-    [ObservableProperty]
-    private string _coverImagePath = string.Empty;
-
-    public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker, IAppSettingsService appSettings)
+    public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker)
     {
         _api = api;
         _folderPicker = folderPicker;
-        _appSettings = appSettings;
-        CoverImagePath = _appSettings.CoverImagePath;
-        _appSettings.CoverImagePathChanged += OnCoverImagePathChanged;
     }
 
     [RelayCommand]
@@ -59,21 +52,13 @@ public partial class IngestViewModel : ObservableObject
 
         try
         {
-            var normalizedCoverImagePath = string.IsNullOrWhiteSpace(_appSettings.CoverImagePath)
-                ? null
-                : _appSettings.CoverImagePath.Trim();
-            CoverImagePath = normalizedCoverImagePath ?? string.Empty;
-            EbookDto.CoverImageRootPath = CoverImagePath;
-
             var startResponse = await _api.StartIngestAsync(new IngestRequestDto
             {
                 Path = SelectedPath,
-                CoverImagePath = normalizedCoverImagePath,
             }, _cts.Token);
 
             await foreach (var evt in _api.StreamIngestAsync(startResponse.JobId, _cts.Token))
             {
-                // Marshal to UI thread.
                 Application.Current.Dispatcher.Invoke(() => ProgressLog.Add(evt.Message));
 
                 if (evt.IsEndOfStream)
@@ -102,11 +87,5 @@ public partial class IngestViewModel : ObservableObject
     private void CancelIngest()
     {
         _cts?.Cancel();
-    }
-
-    private void OnCoverImagePathChanged(object? sender, string value)
-    {
-        CoverImagePath = value;
-        EbookDto.CoverImageRootPath = value;
     }
 }

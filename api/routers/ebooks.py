@@ -1,8 +1,10 @@
 """CRUD endpoints for the ebooks resource."""
 
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 
 from api.dependencies import get_repository
 from api.schemas import EbookResponse, EbookUpdateRequest
@@ -19,6 +21,24 @@ def list_ebooks(
 ) -> list[EbookResponse]:
     rows = repo.list_all(skip=skip, limit=limit)
     return [EbookResponse.model_validate(r) for r in rows]
+
+
+@router.get("/{ebook_id}/cover")
+def get_ebook_cover(
+    ebook_id: uuid.UUID,
+    repo: EbookRepository = Depends(get_repository),
+) -> FileResponse:
+    """Stream the extracted cover image from its on-disk path (sidecar PNG)."""
+    row = repo.get_by_id(ebook_id)
+    if row is None or not row.cover_image_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cover not found.")
+
+    cover_path = Path(row.cover_image_path).expanduser().resolve()
+    if not cover_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cover file missing.")
+
+    media_type = row.cover_image_mime_type or "image/png"
+    return FileResponse(cover_path, media_type=media_type)
 
 
 @router.get("/{ebook_id}", response_model=EbookResponse)

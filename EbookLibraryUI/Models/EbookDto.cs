@@ -5,9 +5,6 @@ namespace EbookLibraryUI.Models;
 /// <summary>Mirrors the EbookResponse schema returned by the FastAPI backend.</summary>
 public class EbookDto
 {
-    /// <summary>Optional local directory where cover images are stored.</summary>
-    public static string CoverImageRootPath { get; set; } = string.Empty;
-
     [JsonPropertyName("id")]
     public Guid Id { get; set; }
 
@@ -70,38 +67,21 @@ public class EbookDto
     {
         get
         {
-            var extension = CoverExtension;
-            if (string.IsNullOrWhiteSpace(extension))
-                return BuildFileUri(CoverImagePath);
-
-            if (!string.IsNullOrWhiteSpace(CoverImageRootPath) && !string.IsNullOrWhiteSpace(FileName))
+            if (string.IsNullOrWhiteSpace(CoverImagePath))
+                return null;
+            try
             {
-                var fileName = $"{System.IO.Path.GetFileNameWithoutExtension(FileName)}{extension}";
-                var candidate = System.IO.Path.Combine(CoverImageRootPath, fileName);
-                return BuildFileUri(candidate);
+                var full = System.IO.Path.GetFullPath(CoverImagePath.Trim());
+                return System.IO.File.Exists(full) ? new Uri(full).AbsoluteUri : null;
             }
-
-            return BuildFileUri(CoverImagePath);
+            catch (ArgumentException)
+            {
+                return null;
+            }
+            catch (NotSupportedException)
+            {
+                return null;
+            }
         }
-    }
-
-    private string CoverExtension =>
-        CoverImageMimeType switch
-        {
-            "image/png" => ".png",
-            "image/jpeg" => ".jpg",
-            "image/gif" => ".gif",
-            _ => string.Empty,
-        };
-
-    private static string? BuildFileUri(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return null;
-
-        var normalizedPath = path.Trim();
-        return Uri.TryCreate(normalizedPath, UriKind.Absolute, out var absoluteUri)
-            ? absoluteUri.IsFile ? absoluteUri.AbsoluteUri : null
-            : new Uri(normalizedPath, UriKind.Absolute).AbsoluteUri;
     }
 }

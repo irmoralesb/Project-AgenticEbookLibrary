@@ -40,17 +40,16 @@ def _patch_ingestion_dependencies(
     monkeypatch.setattr("ingestion.main.get_ebook_repository", lambda _session: repo)
 
 
-def test_run_ingestion_passes_cover_output_dir_to_extract_metadata(
+def test_run_ingestion_calls_extract_metadata_with_resolved_book_path(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """extract_metadata must be called with the resolved cover_output_dir."""
     book_path = tmp_path / "book.pdf"
     book_path.write_bytes(b"%PDF-1.4")
+    book_resolved = book_path.resolve()
 
-    cover_dir = tmp_path / "covers"
     metadata = SimpleNamespace(
         file_name=book_path.name,
-        cover_image_path=str(cover_dir / "book.png"),
+        cover_image_path=str(book_resolved.parent / "book.png"),
         cover_image_mime_type="image/png",
         has_errors=False,
     )
@@ -67,13 +66,10 @@ def test_run_ingestion_passes_cover_output_dir_to_extract_metadata(
         repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), cover_image_path=str(cover_dir))
+    result = run_ingestion(str(tmp_path))
 
     assert result == {"succeeded": 1, "failed": 0}
-    pdf_extractor.extract_metadata.assert_called_once_with(
-        book_path,
-        cover_dir.resolve(),
-    )
+    pdf_extractor.extract_metadata.assert_called_once_with(book_resolved)
     epub_extractor.extract_metadata.assert_not_called()
 
 
@@ -84,8 +80,7 @@ def test_run_ingestion_succeeds_when_extract_metadata_returns_cover_fields(
     book_path = tmp_path / "book.pdf"
     book_path.write_bytes(b"%PDF-1.4")
 
-    cover_dir = tmp_path / "covers"
-    expected_cover = cover_dir / "book.png"
+    expected_cover = book_path.resolve().parent / "book.png"
     metadata = SimpleNamespace(
         file_name=book_path.name,
         cover_image_path=str(expected_cover),
@@ -105,7 +100,7 @@ def test_run_ingestion_succeeds_when_extract_metadata_returns_cover_fields(
         repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), cover_image_path=str(cover_dir))
+    result = run_ingestion(str(tmp_path))
 
     assert result == {"succeeded": 1, "failed": 0}
     assert repo._rows[0].file_name == book_path.name
@@ -131,7 +126,7 @@ def test_run_ingestion_counts_failed_when_extract_metadata_raises(
         repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), cover_image_path=str(tmp_path / "covers"))
+    result = run_ingestion(str(tmp_path))
 
     assert result == {"succeeded": 0, "failed": 1}
 
@@ -147,13 +142,13 @@ def test_run_ingestion_routes_mixed_pdf_and_epub_files_to_matching_extractors(
 
     pdf_metadata = SimpleNamespace(
         file_name=pdf_path.name,
-        cover_image_path=str(tmp_path / "covers" / "book-pdf.png"),
+        cover_image_path=str(pdf_path.resolve().parent / "book.png"),
         cover_image_mime_type="image/png",
         has_errors=False,
     )
     epub_metadata = SimpleNamespace(
         file_name=epub_path.name,
-        cover_image_path=str(tmp_path / "covers" / "book-epub.png"),
+        cover_image_path=str(epub_path.resolve().parent / "book.png"),
         cover_image_mime_type="image/png",
         has_errors=False,
     )
@@ -172,10 +167,10 @@ def test_run_ingestion_routes_mixed_pdf_and_epub_files_to_matching_extractors(
         repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), cover_image_path=str(tmp_path / "covers"))
+    result = run_ingestion(str(tmp_path))
 
     assert result == {"succeeded": 2, "failed": 0}
     pdf_extractor.extract_metadata.assert_called_once()
     epub_extractor.extract_metadata.assert_called_once()
-    assert pdf_extractor.extract_metadata.call_args.args[0] == pdf_path
-    assert epub_extractor.extract_metadata.call_args.args[0] == epub_path
+    assert pdf_extractor.extract_metadata.call_args.args[0] == pdf_path.resolve()
+    assert epub_extractor.extract_metadata.call_args.args[0] == epub_path.resolve()

@@ -187,7 +187,6 @@ class PdfDataExtractor():
     def extract_and_save_cover_image(
         self,
         book_path: Path,
-        cover_output_dir: Path,
         *,
         prior_cover_path: str | None = None,
     ) -> tuple[Path, str, bool]:
@@ -195,13 +194,20 @@ class PdfDataExtractor():
 
         Checks for an existing cover image first; extracts and saves one only
         when none is found. ``was_reused`` is ``True`` when no extraction ran.
+
+        The cover is always written next to the ebook as ``<stem>.png``.
         """
-        cover_output_dir.mkdir(parents=True, exist_ok=True)
-        existing = find_existing_cover(
-            book_path, cover_output_dir, prior_cover_path)
+        book_path = book_path.expanduser().resolve()
+        sidecar_dir = book_path.parent
+        sidecar_dir.mkdir(parents=True, exist_ok=True)
+        existing = find_existing_cover(book_path, sidecar_dir, prior_cover_path)
         if existing is not None:
-            mime = guess_mime_type_from_suffix(existing) or "image/png"
-            return existing, mime, True
+            resolved_existing = existing.resolve()
+            resolved_book = book_path.resolve()
+            if resolved_existing != resolved_book:
+                mime = guess_mime_type_from_suffix(existing)
+                if mime is not None:
+                    return existing, mime, True
 
         cover = self.extract_cover_image(
             book_path,
@@ -209,16 +215,11 @@ class PdfDataExtractor():
             render_format=self._COVER_FORMAT,
             use_embedded_image_fallback=False,
         )
-        ext = cover.mime_type.split("/")[-1]
-        dest = cover_output_dir / f"{book_path.stem}.{ext}"
+        dest = sidecar_dir / f"{book_path.stem}.png"
         dest.write_bytes(cover.data)
-        return dest.resolve(), cover.mime_type, False
+        return dest.resolve(), "image/png", False
 
-    def extract_metadata(
-        self,
-        pdf_path: Path,
-        cover_output_dir: Path | None = None,
-    ) -> EbookMetadata:
+    def extract_metadata(self, pdf_path: Path) -> EbookMetadata:
         pdf_path = pdf_path.resolve()
         has_errors = False
 
@@ -295,16 +296,13 @@ class PdfDataExtractor():
         # --- Cover image ---
         cover_image_path: str | None = None
         cover_image_mime_type: str | None = None
-        if cover_output_dir is not None:
-            try:
-                _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(
-                    pdf_path, cover_output_dir
-                )
-                cover_image_path = str(_cover_path)
-            except Exception:
-                cover_image_path = None
-                cover_image_mime_type = None
-                has_errors = True
+        try:
+            _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(pdf_path)
+            cover_image_path = str(_cover_path)
+        except Exception:
+            cover_image_path = None
+            cover_image_mime_type = None
+            has_errors = True
 
         has_errors = (
             has_errors
@@ -316,7 +314,7 @@ class PdfDataExtractor():
             or parsed_category is None
             or parsed_publisher is None
             or _is_sentinel(parsed_language)
-            or (cover_output_dir is not None and cover_image_path is None)
+            or cover_image_path is None
         )
 
         return map_query_to_ebook_metadata(

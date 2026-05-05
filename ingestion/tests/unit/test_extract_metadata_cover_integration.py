@@ -1,12 +1,5 @@
-"""Tests for the cover_output_dir parameter wired into extract_metadata.
-
-These tests verify that both PdfDataExtractor and EpubDataExtractor
-populate cover_image_path / cover_image_mime_type on the returned metadata
-when cover_output_dir is supplied, and gracefully set has_errors when
-cover extraction fails.
-"""
+"""Tests that metadata extractors populate cover paths and tolerate cover failures."""
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -106,7 +99,7 @@ def _make_epub_extractor(**overrides) -> EpubDataExtractor:
 
 
 # ---------------------------------------------------------------------------
-# PdfDataExtractor.extract_metadata — cover_output_dir
+# PdfDataExtractor.extract_metadata — cover
 # ---------------------------------------------------------------------------
 
 _PDF_OPEN = "extractors.metadata_extractor.pdf_metadata_extractor.fitz.open"
@@ -126,23 +119,7 @@ def _make_fitz_doc(page_count: int = 1) -> MagicMock:
     return doc
 
 
-def test_pdf_extract_metadata_populates_cover_when_dir_provided(tmp_path: Path) -> None:
-    pdf_file = tmp_path / "mybook.pdf"
-    pdf_file.write_bytes(b"%PDF-1.4")
-    cover_dir = tmp_path / "covers"
-
-    extractor = _make_pdf_extractor()
-    fitz_doc = _make_fitz_doc()
-
-    with patch(_PDF_OPEN, return_value=fitz_doc):
-        metadata = extractor.extract_metadata(pdf_file, cover_output_dir=cover_dir)
-
-    assert metadata.cover_image_path is not None
-    assert Path(metadata.cover_image_path).exists()
-    assert metadata.cover_image_mime_type == "image/png"
-
-
-def test_pdf_extract_metadata_no_cover_when_dir_not_provided(tmp_path: Path) -> None:
+def test_pdf_extract_metadata_populates_cover_sidecar(tmp_path: Path) -> None:
     pdf_file = tmp_path / "mybook.pdf"
     pdf_file.write_bytes(b"%PDF-1.4")
 
@@ -152,28 +129,29 @@ def test_pdf_extract_metadata_no_cover_when_dir_not_provided(tmp_path: Path) -> 
     with patch(_PDF_OPEN, return_value=fitz_doc):
         metadata = extractor.extract_metadata(pdf_file)
 
-    assert metadata.cover_image_path is None
-    assert metadata.cover_image_mime_type is None
+    assert metadata.cover_image_path is not None
+    assert Path(metadata.cover_image_path).exists()
+    assert Path(metadata.cover_image_path) == pdf_file.parent / "mybook.png"
+    assert metadata.cover_image_mime_type == "image/png"
 
 
 def test_pdf_extract_metadata_sets_has_errors_on_cover_failure(tmp_path: Path) -> None:
     pdf_file = tmp_path / "mybook.pdf"
     pdf_file.write_bytes(b"%PDF-1.4")
-    cover_dir = tmp_path / "covers"
 
     extractor = _make_pdf_extractor()
     fitz_doc = _make_fitz_doc()
 
     with patch(_PDF_OPEN, return_value=fitz_doc):
         with patch.object(extractor, "extract_and_save_cover_image", side_effect=RuntimeError("no cover")):
-            metadata = extractor.extract_metadata(pdf_file, cover_output_dir=cover_dir)
+            metadata = extractor.extract_metadata(pdf_file)
 
     assert metadata.has_errors is True
     assert metadata.cover_image_path is None
 
 
 # ---------------------------------------------------------------------------
-# EpubDataExtractor.extract_metadata — cover_output_dir
+# EpubDataExtractor.extract_metadata — cover
 # ---------------------------------------------------------------------------
 
 _EPUB_READ = "extractors.metadata_extractor.epub_metadata_extractor.epub.read_epub"
@@ -204,11 +182,10 @@ def _make_epub_book(*, dc_title: str = "Test Book") -> MagicMock:
     return book
 
 
-def test_epub_extract_metadata_populates_cover_when_dir_provided(tmp_path: Path) -> None:
+def test_epub_extract_metadata_populates_cover_sidecar(tmp_path: Path) -> None:
     epub_file = tmp_path / "mybook.epub"
     epub_file.write_bytes(b"PK")
-    cover_dir = tmp_path / "covers"
-    expected_cover = cover_dir / "mybook.jpeg"
+    expected_cover = epub_file.parent / "mybook.png"
 
     extractor = _make_epub_extractor()
     book = _make_epub_book()
@@ -217,32 +194,17 @@ def test_epub_extract_metadata_populates_cover_when_dir_provided(tmp_path: Path)
         with patch.object(
             extractor,
             "extract_and_save_cover_image",
-            return_value=(expected_cover, "image/jpeg", False),
+            return_value=(expected_cover, "image/png", False),
         ):
-            metadata = extractor.extract_metadata(epub_file, cover_output_dir=cover_dir)
+            metadata = extractor.extract_metadata(epub_file)
 
     assert metadata.cover_image_path == str(expected_cover)
-    assert metadata.cover_image_mime_type == "image/jpeg"
-
-
-def test_epub_extract_metadata_no_cover_when_dir_not_provided(tmp_path: Path) -> None:
-    epub_file = tmp_path / "mybook.epub"
-    epub_file.write_bytes(b"PK")
-
-    extractor = _make_epub_extractor()
-    book = _make_epub_book()
-
-    with patch(_EPUB_READ, return_value=book):
-        metadata = extractor.extract_metadata(epub_file)
-
-    assert metadata.cover_image_path is None
-    assert metadata.cover_image_mime_type is None
+    assert metadata.cover_image_mime_type == "image/png"
 
 
 def test_epub_extract_metadata_sets_has_errors_on_cover_failure(tmp_path: Path) -> None:
     epub_file = tmp_path / "mybook.epub"
     epub_file.write_bytes(b"PK")
-    cover_dir = tmp_path / "covers"
 
     extractor = _make_epub_extractor()
     book = _make_epub_book()
@@ -251,7 +213,7 @@ def test_epub_extract_metadata_sets_has_errors_on_cover_failure(tmp_path: Path) 
         with patch.object(
             extractor, "extract_and_save_cover_image", side_effect=RuntimeError("no cover")
         ):
-            metadata = extractor.extract_metadata(epub_file, cover_output_dir=cover_dir)
+            metadata = extractor.extract_metadata(epub_file)
 
     assert metadata.has_errors is True
     assert metadata.cover_image_path is None

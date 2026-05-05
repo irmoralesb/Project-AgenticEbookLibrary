@@ -1,5 +1,4 @@
 import argparse
-import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -15,7 +14,6 @@ from dependency_injection.dependency_utils import (
 
 load_dotenv()
 
-COVER_IMAGE_FOLDER = "cover_images"
 SUPPORTED_EXTENSIONS = ("pdf", "epub")
 
 
@@ -32,7 +30,6 @@ def _get_extractor(extension: str):
 def run_ingestion(
     path: str,
     limit: int | None = None,
-    cover_image_path: str | None = None,
     on_progress: Callable[[str], None] | None = None,
 ) -> dict[str, int]:
     """Scan *path* for supported ebooks and persist their metadata.
@@ -65,10 +62,6 @@ def run_ingestion(
     total_books_found = len(ebook_path_list)
     _emit(f"Books found: {total_books_found}")
 
-    configured_cover_dir = cover_image_path or os.getenv("COVER_IMAGE_PATH") or COVER_IMAGE_FOLDER
-    cover_output_dir = Path(configured_cover_dir).expanduser().resolve()
-    cover_output_dir.mkdir(parents=True, exist_ok=True)
-
     paths_to_extract: list[str] = []
     for session in get_db_session():
         repo = get_ebook_repository(session)
@@ -85,7 +78,7 @@ def run_ingestion(
     failed: int = 0
 
     for ebook_path in paths_to_extract:
-        book_path = Path(ebook_path)
+        book_path = Path(ebook_path).expanduser().resolve()
         _emit(f"Processing: {book_path.name}")
         try:
             extractor = extractors.get(book_path.suffix.lstrip(".").lower())
@@ -94,7 +87,7 @@ def run_ingestion(
                 raise ValueError(
                     f"Unsupported extension for {book_path.name!r}. Supported: {supported}."
                 )
-            metadata = extractor.extract_metadata(book_path, cover_output_dir)
+            metadata = extractor.extract_metadata(book_path)
 
             for session in get_db_session():
                 repo = get_ebook_repository(session)

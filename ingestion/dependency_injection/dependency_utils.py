@@ -36,7 +36,7 @@ load_dotenv()
 BASIC_LLM_MODEL_URL = os.environ["BASIC_LLM_MODEL_URL"]
 BASIC_MODEL_NAME = os.environ["BASIC_MODEL_NAME"]
 BASIC_MODEL_TEMPERATURE = os.environ["BASIC_MODEL_TEMPERATURE"]
-COVER_IMAGE_PATH=os.environ["COVER_IMAGE_PATH"]
+
 
 def get_basic_llm_model() -> BasicLocalModel:
     """Provide the Basic LLM model, the goal is to use this one for easy tasks"""

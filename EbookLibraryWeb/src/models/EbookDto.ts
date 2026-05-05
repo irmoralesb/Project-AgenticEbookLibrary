@@ -27,5 +27,5 @@ export function getAuthorsDisplay(ebook: EbookDto): string {
 
 export function getCoverUrl(ebook: EbookDto): string | null {
   if (!ebook.cover_image_path) return null;
-  return `${API_BASE}/covers/${ebook.cover_image_path}`;
+  return `${API_BASE}/api/ebooks/${ebook.id}/cover`;
 }
