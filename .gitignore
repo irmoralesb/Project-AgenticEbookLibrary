@@ -214,3 +214,5 @@ EbookLibraryUI/obj/
 cover_images/
 
 .vs/
+
+test_results/

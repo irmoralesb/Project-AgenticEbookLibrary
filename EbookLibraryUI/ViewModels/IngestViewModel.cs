@@ -16,14 +16,9 @@ public partial class IngestViewModel : ObservableObject
 
     public ObservableCollection<string> ProgressLog { get; } = [];
 
-    public IReadOnlyList<string> Extensions { get; } = ["pdf", "epub"];
-
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartIngestCommand))]
     private string _selectedPath = string.Empty;
-
-    [ObservableProperty]
-    private string _selectedExtension = "pdf";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartIngestCommand))]
@@ -73,7 +68,6 @@ public partial class IngestViewModel : ObservableObject
             var startResponse = await _api.StartIngestAsync(new IngestRequestDto
             {
                 Path = SelectedPath,
-                Extension = SelectedExtension,
                 CoverImagePath = normalizedCoverImagePath,
             }, _cts.Token);
 

@@ -1,6 +1,5 @@
 export interface IngestRequestDto {
   path: string;
-  extension: 'pdf' | 'epub';
   limit?: number;
 }
 
@@ -19,5 +18,4 @@ export interface IngestProgressEvent {
   isEndOfStream: boolean;
 }
 
-export const EXTENSIONS = ['pdf', 'epub'] as const;
-export type Extension = (typeof EXTENSIONS)[number];
+export const SUPPORTED_FORMATS_LABEL = 'PDF, EPUB';

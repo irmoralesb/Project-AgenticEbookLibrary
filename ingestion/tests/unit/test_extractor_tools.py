@@ -54,6 +54,23 @@ def test_extract_isbn_from_text_finds_isolated_isbn_without_prefix() -> None:
     assert isbn == "978-1-492-06796-1"
 
 
+def test_extract_isbn_from_text_ignores_bare_digits_without_prefix_or_dashes() -> None:
+    text = "Catalog number 0785342694521 and edition 076790818X."
+    extractor = IsbnExtractor()
+
+    assert extractor.extract_isbn_from_text(text) is None
+
+
+def test_extract_isbn_from_text_prefers_isbn_legend_over_earlier_hyphenated_number() -> None:
+    text = (
+        "978-0-596-52718-8\n"
+        "ISBN 9780596527210"
+    )
+    extractor = IsbnExtractor()
+
+    assert extractor.extract_isbn_from_text(text) == "9780596527210"
+
+
 # ---------------------------------------------------------------------------
 # YearExtractor
 # ---------------------------------------------------------------------------

@@ -62,11 +62,12 @@ class BasicLocalModel():
     def extract_authors(self, book_extract: str) -> QueryAuthors:
         system_message = dedent(
             """
-            You are expert finding book data, you work the author list of a book in the given text.
+            You are expert finding book data, you work the author or author list of a book in the given text.
 
             Rules:
             1) The book can have 1 or more authors
             2) They must be stored as they are listed in the text
+               2.1) If there is only one author, the name will be next to the book title
             3) Don't invent data, if no authors are found respond with empty list
             """
         )
@@ -74,7 +75,7 @@ class BasicLocalModel():
         human_message = dedent(
             """ 
             Below is the raw text extracted from the first pages of the book.
-            Extract the author list as instructed.
+            Extract the author or author list as instructed.
 
             -----BEGIN PDF TEXT-----
             {book_extract}

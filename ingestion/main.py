@@ -16,6 +16,7 @@ from dependency_injection.dependency_utils import (
 load_dotenv()
 
 COVER_IMAGE_FOLDER = "cover_images"
+SUPPORTED_EXTENSIONS = ("pdf", "epub")
 
 
 def _get_extractor(extension: str):
@@ -24,21 +25,20 @@ def _get_extractor(extension: str):
         return get_pdf_data_extractor()
     if ext == "epub":
         return get_epub_data_extractor()
-    raise ValueError(f"Unsupported extension: {extension!r}. Supported: pdf, epub.")
+    supported = ", ".join(SUPPORTED_EXTENSIONS)
+    raise ValueError(f"Unsupported extension: {extension!r}. Supported: {supported}.")
 
 
 def run_ingestion(
     path: str,
-    extension: str,
     limit: int | None = None,
     cover_image_path: str | None = None,
     on_progress: Callable[[str], None] | None = None,
 ) -> dict[str, int]:
-    """Scan *path* for ebooks of *extension* type and persist their metadata.
+    """Scan *path* for supported ebooks and persist their metadata.
 
     Args:
         path: Directory to scan recursively.
-        extension: File extension to filter (e.g. ``"pdf"`` or ``"epub"``).
         limit: Maximum number of new books to process; ``None`` means all.
         on_progress: Optional callback called with a human-readable progress
             message for each significant event (found, skip, stored, error).
@@ -51,10 +51,16 @@ def run_ingestion(
         if on_progress is not None:
             on_progress(msg)
 
-    extractor = _get_extractor(extension)
+    extractors = {extension: _get_extractor(extension) for extension in SUPPORTED_EXTENSIONS}
 
     scanner = get_ebook_scanner()
-    ebook_path_list = scanner.get_ebooks_from_path(path=path, extension=extension)
+    ebook_path_list = sorted(
+        dict.fromkeys(
+            ebook_path
+            for extension in SUPPORTED_EXTENSIONS
+            for ebook_path in scanner.get_ebooks_from_path(path=path, extension=extension)
+        )
+    )
 
     total_books_found = len(ebook_path_list)
     _emit(f"Books found: {total_books_found}")
@@ -82,6 +88,12 @@ def run_ingestion(
         book_path = Path(ebook_path)
         _emit(f"Processing: {book_path.name}")
         try:
+            extractor = extractors.get(book_path.suffix.lstrip(".").lower())
+            if extractor is None:
+                supported = ", ".join(SUPPORTED_EXTENSIONS)
+                raise ValueError(
+                    f"Unsupported extension for {book_path.name!r}. Supported: {supported}."
+                )
             metadata = extractor.extract_metadata(book_path, cover_output_dir)
 
             for session in get_db_session():
@@ -100,11 +112,10 @@ def run_ingestion(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Scan a directory for ebooks.")
-    parser.add_argument("path", type=str, help="Directory path to scan for ebooks.")
-    parser.add_argument(
-        "extension", type=str, help="File extension to filter by (e.g. pdf, epub)."
+    parser = argparse.ArgumentParser(
+        description="Scan a directory for supported ebooks (pdf, epub)."
     )
+    parser.add_argument("path", type=str, help="Directory path to scan for ebooks.")
     parser.add_argument(
         "--limit",
         type=int,
@@ -116,7 +127,6 @@ if __name__ == "__main__":
 
     result = run_ingestion(
         path=args.path,
-        extension=args.extension,
         limit=args.limit,
         on_progress=print,
     )

@@ -48,13 +48,9 @@
                            TextTrimming="CharacterEllipsis" />
 
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                    <TextBlock Text="File type:"
+                    <TextBlock Text="Supported types: PDF, EPUB"
                                VerticalAlignment="Center"
-                               Margin="0,0,8,0" />
-                    <ComboBox ItemsSource="{Binding Extensions}"
-                              SelectedItem="{Binding SelectedExtension}"
-                              Width="80"
-                              Margin="0,0,20,0" />
+                               Margin="0,0,20,0" />
 
                     <Button Content="▶  Start Ingestion"
                             Style="{StaticResource PrimaryButtonStyle}"

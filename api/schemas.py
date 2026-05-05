@@ -76,11 +76,6 @@ class IngestRequest(BaseModel):
     """Body for POST /api/ingest/start."""
 
     path: str = Field(description="Absolute directory path to scan for ebooks.")
-    extension: str = Field(
-        default="pdf",
-        description="File extension to filter (pdf or epub).",
-        pattern=r"^(pdf|epub)$",
-    )
     limit: int | None = Field(
         default=None,
         ge=1,

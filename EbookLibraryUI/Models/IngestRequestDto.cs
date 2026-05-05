@@ -7,9 +7,6 @@ public class IngestRequestDto
     [JsonPropertyName("path")]
     public string Path { get; set; } = string.Empty;
 
-    [JsonPropertyName("extension")]
-    public string Extension { get; set; } = "pdf";
-
     [JsonPropertyName("limit")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Limit { get; set; }

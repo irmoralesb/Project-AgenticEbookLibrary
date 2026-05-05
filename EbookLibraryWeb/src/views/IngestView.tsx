@@ -1,11 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { FolderOpen, Play, Square, Loader2 } from 'lucide-react';
 import { startIngest, pickFolder, streamIngest } from '../api/ebookApi';
-import { EXTENSIONS, type Extension } from '../models/IngestModels';
+import { SUPPORTED_FORMATS_LABEL } from '../models/IngestModels';
 
 export default function IngestView() {
   const [selectedPath, setSelectedPath] = useState('');
-  const [extension, setExtension] = useState<Extension>('pdf');
   const [isIngesting, setIsIngesting] = useState(false);
   const [progressLog, setProgressLog] = useState<string[]>([]);
   const [status, setStatus] = useState('');
@@ -42,7 +41,7 @@ export default function IngestView() {
     setIsIngesting(true);
 
     try {
-      const response = await startIngest({ path: selectedPath.trim(), extension });
+      const response = await startIngest({ path: selectedPath.trim() });
       appendLog(`Job started: ${response.job_id}`);
 
       const stop = streamIngest(
@@ -119,24 +118,11 @@ export default function IngestView() {
             </div>
           </div>
 
-          <div className="mb-5 flex items-center gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500">
-                File type
-              </label>
-              <select
-                value={extension}
-                onChange={(e) => setExtension(e.target.value as Extension)}
-                disabled={isIngesting}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                {EXTENSIONS.map((ext) => (
-                  <option key={ext} value={ext}>
-                    {ext}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="mb-5">
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              Supported types
+            </label>
+            <p className="text-sm text-gray-700">{SUPPORTED_FORMATS_LABEL}</p>
           </div>
 
           <div className="flex items-center gap-3">

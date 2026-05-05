@@ -18,11 +18,23 @@ class _RepoStub:
         return row
 
 
-def _patch_ingestion_dependencies(monkeypatch, *, extractor, scanner_paths: list[str], repo):
-    monkeypatch.setattr("ingestion.main.get_pdf_data_extractor", lambda: extractor)
+def _patch_ingestion_dependencies(
+    monkeypatch,
+    *,
+    pdf_extractor,
+    epub_extractor,
+    scanner_paths_by_extension: dict[str, list[str]],
+    repo,
+):
+    monkeypatch.setattr("ingestion.main.get_pdf_data_extractor", lambda: pdf_extractor)
+    monkeypatch.setattr("ingestion.main.get_epub_data_extractor", lambda: epub_extractor)
     monkeypatch.setattr(
         "ingestion.main.get_ebook_scanner",
-        lambda: Mock(get_ebooks_from_path=lambda **_: scanner_paths),
+        lambda: Mock(
+            get_ebooks_from_path=lambda **kwargs: scanner_paths_by_extension.get(
+                kwargs["extension"], []
+            )
+        ),
     )
     monkeypatch.setattr("ingestion.main.get_db_session", lambda: iter([object()]))
     monkeypatch.setattr("ingestion.main.get_ebook_repository", lambda _session: repo)
@@ -42,21 +54,27 @@ def test_run_ingestion_passes_cover_output_dir_to_extract_metadata(
         cover_image_mime_type="image/png",
         has_errors=False,
     )
-    extractor = Mock()
-    extractor.extract_metadata.return_value = metadata
+    pdf_extractor = Mock()
+    pdf_extractor.extract_metadata.return_value = metadata
+    epub_extractor = Mock()
 
     repo = _RepoStub()
     _patch_ingestion_dependencies(
-        monkeypatch, extractor=extractor, scanner_paths=[str(book_path)], repo=repo
+        monkeypatch,
+        pdf_extractor=pdf_extractor,
+        epub_extractor=epub_extractor,
+        scanner_paths_by_extension={"pdf": [str(book_path)], "epub": []},
+        repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), "pdf", cover_image_path=str(cover_dir))
+    result = run_ingestion(str(tmp_path), cover_image_path=str(cover_dir))
 
     assert result == {"succeeded": 1, "failed": 0}
-    extractor.extract_metadata.assert_called_once_with(
+    pdf_extractor.extract_metadata.assert_called_once_with(
         book_path,
         cover_dir.resolve(),
     )
+    epub_extractor.extract_metadata.assert_not_called()
 
 
 def test_run_ingestion_succeeds_when_extract_metadata_returns_cover_fields(
@@ -74,15 +92,20 @@ def test_run_ingestion_succeeds_when_extract_metadata_returns_cover_fields(
         cover_image_mime_type="image/png",
         has_errors=False,
     )
-    extractor = Mock()
-    extractor.extract_metadata.return_value = metadata
+    pdf_extractor = Mock()
+    pdf_extractor.extract_metadata.return_value = metadata
+    epub_extractor = Mock()
 
     repo = _RepoStub()
     _patch_ingestion_dependencies(
-        monkeypatch, extractor=extractor, scanner_paths=[str(book_path)], repo=repo
+        monkeypatch,
+        pdf_extractor=pdf_extractor,
+        epub_extractor=epub_extractor,
+        scanner_paths_by_extension={"pdf": [str(book_path)], "epub": []},
+        repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), "pdf", cover_image_path=str(cover_dir))
+    result = run_ingestion(str(tmp_path), cover_image_path=str(cover_dir))
 
     assert result == {"succeeded": 1, "failed": 0}
     assert repo._rows[0].file_name == book_path.name
@@ -95,14 +118,64 @@ def test_run_ingestion_counts_failed_when_extract_metadata_raises(
     book_path = tmp_path / "book.pdf"
     book_path.write_bytes(b"%PDF-1.4")
 
-    extractor = Mock()
-    extractor.extract_metadata.side_effect = RuntimeError("pdf broken")
+    pdf_extractor = Mock()
+    pdf_extractor.extract_metadata.side_effect = RuntimeError("pdf broken")
+    epub_extractor = Mock()
 
     repo = _RepoStub()
     _patch_ingestion_dependencies(
-        monkeypatch, extractor=extractor, scanner_paths=[str(book_path)], repo=repo
+        monkeypatch,
+        pdf_extractor=pdf_extractor,
+        epub_extractor=epub_extractor,
+        scanner_paths_by_extension={"pdf": [str(book_path)], "epub": []},
+        repo=repo,
     )
 
-    result = run_ingestion(str(tmp_path), "pdf", cover_image_path=str(tmp_path / "covers"))
+    result = run_ingestion(str(tmp_path), cover_image_path=str(tmp_path / "covers"))
 
     assert result == {"succeeded": 0, "failed": 1}
+
+
+def test_run_ingestion_routes_mixed_pdf_and_epub_files_to_matching_extractors(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A single folder can contain both supported types and each uses its extractor."""
+    pdf_path = tmp_path / "book.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4")
+    epub_path = tmp_path / "book.epub"
+    epub_path.write_bytes(b"EPUB")
+
+    pdf_metadata = SimpleNamespace(
+        file_name=pdf_path.name,
+        cover_image_path=str(tmp_path / "covers" / "book-pdf.png"),
+        cover_image_mime_type="image/png",
+        has_errors=False,
+    )
+    epub_metadata = SimpleNamespace(
+        file_name=epub_path.name,
+        cover_image_path=str(tmp_path / "covers" / "book-epub.png"),
+        cover_image_mime_type="image/png",
+        has_errors=False,
+    )
+
+    pdf_extractor = Mock()
+    pdf_extractor.extract_metadata.return_value = pdf_metadata
+    epub_extractor = Mock()
+    epub_extractor.extract_metadata.return_value = epub_metadata
+
+    repo = _RepoStub()
+    _patch_ingestion_dependencies(
+        monkeypatch,
+        pdf_extractor=pdf_extractor,
+        epub_extractor=epub_extractor,
+        scanner_paths_by_extension={"pdf": [str(pdf_path)], "epub": [str(epub_path)]},
+        repo=repo,
+    )
+
+    result = run_ingestion(str(tmp_path), cover_image_path=str(tmp_path / "covers"))
+
+    assert result == {"succeeded": 2, "failed": 0}
+    pdf_extractor.extract_metadata.assert_called_once()
+    epub_extractor.extract_metadata.assert_called_once()
+    assert pdf_extractor.extract_metadata.call_args.args[0] == pdf_path
+    assert epub_extractor.extract_metadata.call_args.args[0] == epub_path
