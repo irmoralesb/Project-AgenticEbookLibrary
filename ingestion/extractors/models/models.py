@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
-from domain.ebook_metadata import Category, EbookMetadata
+from domain.ebook_metadata import EbookMetadata
 
 
 @dataclass(frozen=True)
@@ -29,38 +29,21 @@ class QueryAuthors(BaseModel):
 class QueryCategoryMetadata(BaseModel):
     """Category and subcategory extracted by the LLM from the first pages of an ebook."""
 
-    category: Category | None = Field(
+    category: str | None = Field(
         default="Other",
+        max_length=60,
         description=(
-            "General topic of the book. Must be exactly one of: "
-            "Programming, Software Engineering & Design Patterns, Data Structures & Algorithms, "
-            "Web Development, Mobile App Development, Cybersecurity & Ethical Hacking, DevOps, "
-            "Operating Systems, Cloud Services, Architecture, Networking, Databases, AI/ML, "
-            "Project Management, Video Game Development, Drawing, Other."
+            "Concise shelf-style label for the book’s subject (≤60 characters). "
+            "Examples for orientation only (not an exhaustive list): Programming, History, Cooking. "
+            "Use 'Other' when the topic is unclear."
         ),
     )
     subcategory: str | None = Field(
         default="Other",
         max_length=40,
         description=(
-            "Specific topic within the chosen category, e.g. "
-            "Programming -> C#/Python/JavaScript, "
-            "Software Engineering & Design Patterns -> Domain Driven Design/Clean Architecture/SOLID, "
-            "Data Structures & Algorithms -> Arrays/Graphs/Dynamic Programming, "
-            "Web Development -> HTML/CSS/React/ASP.NET, "
-            "Mobile App Development -> Android/iOS/Flutter, "
-            "Cybersecurity & Ethical Hacking -> Penetration Testing/Threat Modeling, "
-            "DevOps -> CI/CD/Docker/Kubernetes, "
-            "Operating Systems -> Linux/Windows Internals/Process Scheduling, "
-            "Cloud Services -> Azure/AWS/GCP, "
-            "Architecture -> Microservices/Event-Driven Architecture/System Design, "
-            "Networking -> Firewall/Routing/TCP-IP, "
-            "Databases -> MS SQL/PostgreSQL/MongoDB, "
-            "AI/ML -> Machine Learning/LLMs/Neural Networks, "
-            "Project Management -> Agile Development/Scrum/Kanban/Extreme Programming. "
-            "Video Game Development -> Unity/Maya/Music/Coding/Literature/Others"
-            "Drawing -> Technics/Drawing Animals/Drawing People"
-            "Return 'Other' when none applies."
+            "More specific facet under the category (≤40 characters), e.g. Python under Programming "
+            "or Medieval Europe under History. Use 'Other' when unsure."
         ),
     )
 

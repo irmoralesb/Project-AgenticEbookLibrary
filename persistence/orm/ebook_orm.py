@@ -13,31 +13,6 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-_VALID_CATEGORIES = (
-    "Programming",
-    "Software Engineering & Design Patterns",
-    "Data Structures & Algorithms",
-    "Web Development",
-    "Mobile App Development",
-    "Cybersecurity & Ethical Hacking",
-    "DevOps",
-    "Operating Systems",
-    "Cloud Services",
-    "Architecture",
-    "Networking",
-    "Databases",
-    "AI/ML",
-    "Project Management",
-    "Video Game Development",
-    "Drawing",
-    "Other",
-)
-
-_CATEGORY_CHECK = "category IN ({})".format(
-    ", ".join(f"'{v}'" for v in _VALID_CATEGORIES)
-)
-
-
 class Base(DeclarativeBase):
     pass
 
@@ -45,7 +20,6 @@ class Base(DeclarativeBase):
 class EbookORM(Base):
     __tablename__ = "ebooks"
     __table_args__ = (
-        CheckConstraint(_CATEGORY_CHECK, name="ck_ebooks_category"),
         CheckConstraint(
             "year IS NULL OR (year >= 1950 AND year <= 2050)",
             name="ck_ebooks_year",

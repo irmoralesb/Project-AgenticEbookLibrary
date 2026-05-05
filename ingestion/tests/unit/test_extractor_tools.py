@@ -87,14 +87,14 @@ def test_extract_isbn_from_text_prefers_isbn_legend_over_earlier_hyphenated_numb
 ])
 def test_year_extractor_extracts_year(text: str, expected: int | None) -> None:
     extractor = YearExtractor()
-    assert extractor.extract_year_from_text(text) == expected
+    assert extractor.extract_year_from_text([text]) == expected
 
 
 def test_year_extractor_prefers_copyright_over_bare_year() -> None:
     # The copyright pattern should win over a bare year that appears earlier.
     text = "Edition 1999 reprint. © 2022 Acme Corp."
     extractor = YearExtractor()
-    assert extractor.extract_year_from_text(text) == 2022
+    assert extractor.extract_year_from_text([text]) == 2022
 
 
 # ---------------------------------------------------------------------------
@@ -111,26 +111,28 @@ def test_year_extractor_prefers_copyright_over_bare_year() -> None:
 ])
 def test_publisher_extractor_extracts_canonical_publisher(text: str, expected: str | None) -> None:
     extractor = PublisherExtractor()
-    assert extractor.extract_publisher_from_text(text) == expected
+    assert extractor.extract_publisher_from_text([text]) == expected
 
 
 def test_publisher_extractor_returns_canonical_casing() -> None:
     extractor = PublisherExtractor()
-    result = extractor.extract_publisher_from_text("published by o'reilly media")
+    result = extractor.extract_publisher_from_text(["published by o'reilly media"])
     assert result == "O'Reilly Media"
 
 
 def test_publisher_extractor_matches_curly_apostrophe_from_pdf() -> None:
     # PDF text frequently uses the right single quotation mark (U+2019) instead of ASCII apostrophe.
     extractor = PublisherExtractor()
-    result = extractor.extract_publisher_from_text("Published by O\u2019Reilly Media, Inc.")
+    result = extractor.extract_publisher_from_text(["Published by O\u2019Reilly Media, Inc."])
     assert result == "O'Reilly Media"
 
 
 def test_publisher_extractor_prefers_longer_match() -> None:
     # "Addison-Wesley Professional" must beat "Addison-Wesley".
     extractor = PublisherExtractor()
-    result = extractor.extract_publisher_from_text("Addison-Wesley Professional, a Pearson imprint")
+    result = extractor.extract_publisher_from_text(
+        ["Addison-Wesley Professional, a Pearson imprint"]
+    )
     assert result == "Addison-Wesley Professional"
 
 
@@ -159,7 +161,7 @@ def test_authors_extractor_delegates_to_llm_and_returns_list() -> None:
     llm.extract_authors.return_value = QueryAuthors(authors=["Alice Smith", "Bob Jones"])
     extractor = AuthorsExtractor(llm)
 
-    result = extractor.get_authors("some book text")
+    result = extractor.get_authors(["some book text"])
 
     llm.extract_authors.assert_called_once_with("some book text")
     assert result == ["Alice Smith", "Bob Jones"]
@@ -174,7 +176,7 @@ def test_description_extractor_delegates_to_llm() -> None:
     llm.extract_description.return_value = "A practical guide to Python."
     extractor = DescriptionExtractor(llm)
 
-    result = extractor.get_description("raw pdf text")
+    result = extractor.get_description(["raw pdf text"])
 
     llm.extract_description.assert_called_once_with("raw pdf text")
     assert result == "A practical guide to Python."
@@ -185,7 +187,7 @@ def test_description_extractor_returns_none_when_llm_returns_none() -> None:
     llm.extract_description.return_value = None
     extractor = DescriptionExtractor(llm)
 
-    assert extractor.get_description("text") is None
+    assert extractor.get_description(["text"]) is None
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +200,7 @@ def test_category_extractor_delegates_to_llm_and_returns_model() -> None:
     llm.extract_category.return_value = expected
     extractor = CategoryExtractor(llm)
 
-    result = extractor.get_category("raw pdf text")
+    result = extractor.get_category(["raw pdf text"])
 
     llm.extract_category.assert_called_once_with("raw pdf text")
     assert result.category == "Programming"
@@ -210,7 +212,7 @@ def test_category_extractor_defaults_to_other_when_llm_returns_defaults() -> Non
     llm.extract_category.return_value = QueryCategoryMetadata()
     extractor = CategoryExtractor(llm)
 
-    result = extractor.get_category("text")
+    result = extractor.get_category(["text"])
 
     assert result.category == "Other"
     assert result.subcategory == "Other"

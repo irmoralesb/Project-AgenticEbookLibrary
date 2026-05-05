@@ -5,29 +5,8 @@ can evolve independently of the internal EbookMetadata / EbookORM types.
 """
 
 import uuid
-from typing import Literal
 
 from pydantic import BaseModel, Field
-
-Category = Literal[
-    "Programming",
-    "Software Engineering & Design Patterns",
-    "Data Structures & Algorithms",
-    "Web Development",
-    "Mobile App Development",
-    "Cybersecurity & Ethical Hacking",
-    "DevOps",
-    "Operating Systems",
-    "Cloud Services",
-    "Architecture",
-    "Networking",
-    "Databases",
-    "AI/ML",
-    "Project Management",
-    "Video Game Development",
-    "Drawing",
-    "Other",
-]
 
 
 class EbookResponse(BaseModel):
@@ -64,7 +43,7 @@ class EbookUpdateRequest(BaseModel):
     authors: list[str] | None = None
     year: int | None = Field(default=None, ge=1950, le=2050)
     description: str | None = Field(default=None, max_length=2000)
-    category: Category | None = None
+    category: str | None = Field(default=None, max_length=60)
     subcategory: str | None = Field(default=None, max_length=40)
     publisher: str | None = Field(default=None, max_length=60)
     edition: str | None = Field(default=None, max_length=20)

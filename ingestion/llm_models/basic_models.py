@@ -127,36 +127,16 @@ class BasicLocalModel():
 
     def extract_category(self, text: str) -> QueryCategoryMetadata:
         system_message = dedent("""
-            You classify technical ebooks into a category and subcategory.
+            You assign a category and subcategory for any ebook based on its early content.
 
-            Allowed categories:
-            Programming, Software Engineering & Design Patterns, Data Structures & Algorithms,
-            Web Development, Mobile App Development, Cybersecurity & Ethical Hacking, DevOps,
-            Operating Systems, Cloud Services, Architecture, Networking, Databases, AI/ML,
-            Project Management, Other.
-
-            Example (category, subcategory) pairs:
-            - Programming             -> C#, Python, JavaScript, TypeScript, Go, Rust, Java
-            - Software Engineering    -> Domain Driven Design, Clean Architecture, SOLID
-            - Data Structures         -> Arrays, Graphs, Dynamic Programming
-            - Web Development         -> HTML/CSS, React, ASP.NET
-            - Mobile App Development  -> Android, iOS, Flutter
-            - Cybersecurity           -> Penetration Testing, Threat Modeling
-            - DevOps                  -> CI/CD, Docker, Kubernetes
-            - Operating Systems       -> Linux, Windows Internals, Process Scheduling
-            - Cloud Services          -> Azure, AWS, GCP
-            - Architecture            -> Microservices, Event-Driven Architecture, System Design
-            - Networking              -> Firewall, Routing, TCP/IP
-            - Databases               -> MS SQL, PostgreSQL, MongoDB
-            - AI/ML                   -> Machine Learning, LLMs, Neural Networks
-            - Project Management      -> Agile, Scrum, Kanban
-            - Video Game Development  -> Unity, Maya, Music, Coding, Literature, Others
-            - Drawing                 -> Technics, Drawing Animals, Drawing People
+            Pick short, library-style labels the reader would recognize: category is the broad shelf;
+            subcategory refines it (e.g. category "Programming", subcategory "Rust"; or "Cooking",
+            "Italian"). These examples are hints only — invent fitting labels for any topic.
 
             Rules:
             - Output ONLY the JSON object that matches the schema.
-            - Use exactly the spelling shown above.
-            - Return "Other" for both fields when the book does not fit any category.
+            - Category at most 60 characters; subcategory at most 40.
+            - Return "Other" for both fields when you cannot classify confidently.
             """).strip()
 
         human_message = dedent("""

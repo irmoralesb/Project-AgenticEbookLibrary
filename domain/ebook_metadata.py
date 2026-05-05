@@ -1,26 +1,6 @@
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
-Category = Literal[
-    "Programming",
-    "Software Engineering & Design Patterns",
-    "Data Structures & Algorithms",
-    "Web Development",
-    "Mobile App Development",
-    "Cybersecurity & Ethical Hacking",
-    "DevOps",
-    "Operating Systems",
-    "Cloud Services",
-    "Architecture",
-    "Networking",
-    "Databases",
-    "AI/ML",
-    "Project Management",
-    "Video Game Development",
-    "Drawing",
-    "Other",
-]
+Category = str
 
 
 class EbookMetadata(BaseModel):
@@ -52,7 +32,8 @@ class EbookMetadata(BaseModel):
     )
     category: Category | None = Field(
         default="Other",
-        description="High-level shelf, e.g. Programming, Networking, Architecture",
+        max_length=60,
+        description="High-level shelf label for the book’s topic (concise, ≤60 characters).",
     )
     subcategory: str | None = Field(
         default="Other",
