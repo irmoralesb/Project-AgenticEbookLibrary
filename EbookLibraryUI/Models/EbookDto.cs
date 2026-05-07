@@ -29,6 +29,9 @@ public class EbookDto
     [JsonPropertyName("subcategory")]
     public string? Subcategory { get; set; }
 
+    [JsonPropertyName("tags")]
+    public List<string> Tags { get; set; } = [];
+
     [JsonPropertyName("publisher")]
     public string? Publisher { get; set; }
 
@@ -64,6 +67,9 @@ public class EbookDto
 
     /// <summary>Comma-separated authors string for display in table cells.</summary>
     public string AuthorsDisplay => Authors.Count > 0 ? string.Join(", ", Authors) : "—";
+
+    /// <summary>Comma-separated tags for grid display.</summary>
+    public string TagsDisplay => Tags.Count > 0 ? string.Join(", ", Tags) : "—";
 
     /// <summary>Absolute local file URI for the cover image shown in WPF.</summary>
     public string? CoverUrl

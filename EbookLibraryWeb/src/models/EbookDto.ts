@@ -9,6 +9,7 @@ export interface EbookDto {
   description: string | null;
   category: string | null;
   subcategory: string | null;
+  tags: string[] | null;
   publisher: string | null;
   edition: string | null;
   language: string | null;
@@ -24,6 +25,10 @@ export interface EbookDto {
 
 export function getAuthorsDisplay(ebook: EbookDto): string {
   return ebook.authors?.join(', ') ?? '';
+}
+
+export function getTagsDisplay(ebook: EbookDto): string {
+  return ebook.tags?.length ? ebook.tags.join(', ') : '—';
 }
 
 export function getCoverUrl(ebook: EbookDto): string | null {

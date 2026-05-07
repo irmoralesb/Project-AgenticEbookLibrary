@@ -37,6 +37,10 @@ public class EbookUpdateDto
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Subcategory { get; set; }
 
+    [JsonPropertyName("tags")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Tags { get; set; }
+
     [JsonPropertyName("publisher")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Publisher { get; set; }

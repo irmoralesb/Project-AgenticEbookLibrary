@@ -38,6 +38,7 @@ public partial class EbookDetailViewModel : ObservableObject
     [ObservableProperty] private string? _description;
     [ObservableProperty] private string? _category;
     [ObservableProperty] private string? _subcategory;
+    [ObservableProperty] private string? _tagsText;
     [ObservableProperty] private string? _publisher;
     [ObservableProperty] private string? _edition;
     [ObservableProperty] private string? _language;
@@ -64,6 +65,7 @@ public partial class EbookDetailViewModel : ObservableObject
         Description = dto.Description;
         Category = dto.Category;
         Subcategory = dto.Subcategory;
+        TagsText = dto.Tags.Count > 0 ? string.Join(", ", dto.Tags) : null;
         Publisher = dto.Publisher;
         Edition = dto.Edition;
         Language = dto.Language;
@@ -102,6 +104,10 @@ public partial class EbookDetailViewModel : ObservableObject
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
 
+        var tags = TagsText?
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
         return new EbookUpdateDto
         {
             Title = Title,
@@ -111,6 +117,7 @@ public partial class EbookDetailViewModel : ObservableObject
             Description = Description,
             Category = Category,
             Subcategory = Subcategory,
+            Tags = tags ?? [],
             Publisher = Publisher,
             Edition = Edition,
             Language = Language,

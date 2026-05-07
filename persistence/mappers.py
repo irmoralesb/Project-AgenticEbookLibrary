@@ -12,6 +12,7 @@ def ebook_metadata_to_orm(metadata: EbookMetadata) -> EbookORM:
         description=metadata.description,
         category=metadata.category or "Other",
         subcategory=metadata.subcategory or "Other",
+        tags=list(metadata.tags) if metadata.tags else [],
         publisher=metadata.publisher or "Unknown",
         edition=metadata.edition or "Not Specified",
         language=metadata.language or "en",

@@ -66,6 +66,7 @@ def map_query_to_ebook_metadata(
     has_errors: bool,
     cover_image_path: str | None = None,
     cover_image_mime_type: str | None = None,
+    tags: list[str] | None = None,
 ) -> EbookMetadata:
     """Assemble the final EbookMetadata from individually extracted fields."""
 
@@ -87,6 +88,7 @@ def map_query_to_ebook_metadata(
         description=_fallback_text(description, "Not Found"),
         category=_fallback_text(category, "Other"),
         subcategory=_fallback_text(subcategory, "Other"),
+        tags=list(tags) if tags else [],
         publisher=_fallback_text(publisher, "Unknown"),
         language=_fallback_text(language, "en"),
         has_errors=has_errors,

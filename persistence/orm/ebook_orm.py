@@ -48,6 +48,9 @@ class EbookORM(Base):
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     category: Mapped[str] = mapped_column(String(60), nullable=False)
     subcategory: Mapped[str] = mapped_column(String(40), nullable=False)
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(String), nullable=False, default=list
+    )
     publisher: Mapped[str] = mapped_column(
         String(60), nullable=False, default="Unknown"
     )

@@ -5,8 +5,11 @@ can evolve independently of the internal EbookMetadata / EbookORM types.
 """
 
 import uuid
+from typing import Annotated
 
 from pydantic import BaseModel, Field
+
+TagKeyword = Annotated[str, Field(max_length=80)]
 
 
 class EbookResponse(BaseModel):
@@ -20,6 +23,7 @@ class EbookResponse(BaseModel):
     description: str | None
     category: str | None
     subcategory: str | None
+    tags: list[str]
     publisher: str | None
     edition: str | None
     language: str | None
@@ -45,6 +49,7 @@ class EbookUpdateRequest(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     category: str | None = Field(default=None, max_length=60)
     subcategory: str | None = Field(default=None, max_length=40)
+    tags: list[TagKeyword] | None = Field(default=None, max_length=50)
     publisher: str | None = Field(default=None, max_length=60)
     edition: str | None = Field(default=None, max_length=20)
     language: str | None = Field(default=None, max_length=10)

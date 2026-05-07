@@ -6,6 +6,7 @@ export interface EbookUpdateDto {
   description?: string | null;
   category?: string | null;
   subcategory?: string | null;
+  tags?: string[] | null;
   publisher?: string | null;
   edition?: string | null;
   language?: string | null;

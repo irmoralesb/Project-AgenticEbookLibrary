@@ -82,6 +82,17 @@
                     <TextBox Text="{Binding Subcategory, UpdateSourceTrigger=PropertyChanged}"
                              Padding="8,6" FontSize="13" />
 
+                    <TextBlock Text="Tags" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="Keywords about this book (comma-separated). Not limited to category."
+                               Foreground="{StaticResource SubtleTextBrush}"
+                               FontSize="11"
+                               Margin="0,0,0,4"
+                               TextWrapping="Wrap" />
+                    <TextBox Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13"
+                             AcceptsReturn="False"
+                             ToolTip="Example: C#, SOLID Principles, Design Patterns" />
+
                     <!-- Publisher + Edition row -->
                     <Grid>
                         <Grid.ColumnDefinitions>

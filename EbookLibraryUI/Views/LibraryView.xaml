@@ -64,6 +64,7 @@
                 <DataGridTextColumn Header="Title"      Binding="{Binding Title}"          Width="2*" />
                 <DataGridTextColumn Header="Authors"    Binding="{Binding AuthorsDisplay}"  Width="*" />
                 <DataGridTextColumn Header="Category"   Binding="{Binding Category}"        Width="130" />
+                <DataGridTextColumn Header="Tags"       Binding="{Binding TagsDisplay}"     Width="*" />
                 <DataGridTextColumn Header="Year"       Binding="{Binding Year}"            Width="55" />
                 <DataGridTextColumn Header="Publisher"  Binding="{Binding Publisher}"       Width="110" />
                 <DataGridTextColumn Header="Pages"      Binding="{Binding PageCount}"       Width="55" />

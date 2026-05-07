@@ -19,6 +19,7 @@ _UPDATABLE_FIELDS = frozenset(
         "description",
         "category",
         "subcategory",
+        "tags",
         "publisher",
         "edition",
         "language",

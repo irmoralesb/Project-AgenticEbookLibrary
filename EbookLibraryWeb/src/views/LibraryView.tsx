@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { getEbooks, deleteEbook } from '../api/ebookApi';
-import { type EbookDto, getAuthorsDisplay, getCoverUrl } from '../models/EbookDto';
+import {
+  type EbookDto,
+  getAuthorsDisplay,
+  getCoverUrl,
+  getTagsDisplay,
+} from '../models/EbookDto';
 
 export default function LibraryView() {
   const navigate = useNavigate();
@@ -73,6 +78,9 @@ export default function LibraryView() {
                 Category
               </th>
               <th className="border-b border-gray-200 px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                Tags
+              </th>
+              <th className="border-b border-gray-200 px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                 Year
               </th>
               <th className="border-b border-gray-200 px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -89,7 +97,7 @@ export default function LibraryView() {
           <tbody className="bg-white">
             {books.length === 0 && !isLoading && (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-gray-400">
+                <td colSpan={9} className="py-12 text-center text-gray-400">
                   No ebooks found.
                 </td>
               </tr>
@@ -132,6 +140,18 @@ export default function LibraryView() {
                   </td>
                   <td className="border-b border-gray-100 px-3 py-2 text-gray-600">
                     {book.category}
+                  </td>
+                  <td className="max-w-[200px] border-b border-gray-100 px-3 py-2 text-gray-600">
+                    <div
+                      className="truncate"
+                      title={
+                        book.tags && book.tags.length > 0
+                          ? book.tags.join(', ')
+                          : undefined
+                      }
+                    >
+                      {getTagsDisplay(book)}
+                    </div>
                   </td>
                   <td className="border-b border-gray-100 px-3 py-2 text-gray-600">
                     {book.year}
