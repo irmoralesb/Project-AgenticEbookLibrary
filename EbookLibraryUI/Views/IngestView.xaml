@@ -59,17 +59,30 @@
             </StackPanel>
         </Border>
 
-        <!-- Progress heading + spinner -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Progress"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-            <ProgressBar IsIndeterminate="True"
-                         Width="100" Height="4"
-                         Margin="12,0,0,0"
-                         VerticalAlignment="Center"
-                         Visibility="{Binding IsIngesting, Converter={StaticResource BoolToVisibilityConverter}}" />
-        </StackPanel>
+        <!-- Progress heading + spinner + save log -->
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <TextBlock Text="Progress"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <ProgressBar IsIndeterminate="True"
+                             Width="100" Height="4"
+                             Margin="12,0,0,0"
+                             VerticalAlignment="Center"
+                             Visibility="{Binding IsIngesting, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Content="Save log…"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Command="{Binding SaveLogCommand}"
+                    VerticalAlignment="Center" />
+        </Grid>
 
         <!-- Scrolling log -->
         <Border Grid.Row="3"

@@ -43,7 +43,9 @@
                   RowBackground="White"
                   AlternatingRowBackground="#FAFAFA"
                   BorderBrush="{StaticResource BorderBrush}"
-                  BorderThickness="1">
+                  BorderThickness="1"
+                  ToolTip="Double-click a row to open with your default reader."
+                  MouseDoubleClick="BookGrid_OnMouseDoubleClick">
 
             <DataGrid.Columns>
 

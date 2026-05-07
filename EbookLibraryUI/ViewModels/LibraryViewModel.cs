@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EbookLibraryUI.Models;
@@ -70,5 +72,48 @@ public partial class LibraryViewModel : ObservableObject
     private void EditBook(EbookDto book)
     {
         EditRequested?.Invoke(book);
+    }
+
+    [RelayCommand]
+    private void OpenBook(EbookDto? book)
+    {
+        if (book is null)
+        {
+            StatusMessage = "No book selected.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(book.FilePath))
+        {
+            StatusMessage = "This book has no file path on disk.";
+            return;
+        }
+
+        string path;
+        try
+        {
+            path = Path.GetFullPath(book.FilePath.Trim());
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Invalid file path: {ex.Message}";
+            return;
+        }
+
+        if (!File.Exists(path))
+        {
+            StatusMessage = $"File not found: {path}";
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            StatusMessage = $"Opened: {book.Title ?? book.FileName ?? path}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not open file: {ex.Message}";
+        }
     }
 }
