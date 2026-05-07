@@ -3,7 +3,7 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
 from api.dependencies import get_repository
@@ -17,9 +17,18 @@ router = APIRouter(prefix="/api/ebooks", tags=["ebooks"])
 def list_ebooks(
     skip: int = 0,
     limit: int = 100,
+    publisher: str | None = None,
+    category: str | None = None,
+    has_errors: bool | None = Query(default=None),
     repo: EbookRepository = Depends(get_repository),
 ) -> list[EbookResponse]:
-    rows = repo.list_all(skip=skip, limit=limit)
+    rows = repo.list_all(
+        skip=skip,
+        limit=limit,
+        publisher_contains=publisher.strip() if publisher else None,
+        category_contains=category.strip() if category else None,
+        has_errors=has_errors,
+    )
     return [EbookResponse.model_validate(r) for r in rows]
 
 

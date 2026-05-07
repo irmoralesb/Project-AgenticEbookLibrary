@@ -6,6 +6,11 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+
+def _escape_like_fragment(term: str) -> str:
+    """Escape ``\\``, ``%``, and ``_`` for SQL LIKE / ILIKE when using backslash escape."""
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 from domain.ebook_metadata import EbookMetadata
 from persistence.mappers import ebook_metadata_to_orm
 from persistence.orm.ebook_orm import EbookORM
@@ -48,8 +53,16 @@ class EbookRepository(Protocol):
         """True if a row with this file name (including extension) is already stored."""
         ...
 
-    def list_all(self, skip: int = 0, limit: int = 100) -> list[EbookORM]:
-        """Return a paginated slice of all ebook rows ordered by title."""
+    def list_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        *,
+        publisher_contains: str | None = None,
+        category_contains: str | None = None,
+        has_errors: bool | None = None,
+    ) -> list[EbookORM]:
+        """Return a paginated slice of ebook rows ordered by title, with optional filters."""
         ...
 
     def update(self, ebook_id: uuid.UUID, data: dict) -> EbookORM | None:
@@ -79,8 +92,25 @@ class SqlAlchemyEbookRepository:  # implements EbookRepository
         stmt = select(EbookORM.id).where(EbookORM.file_name == file_name).limit(1)
         return self._session.execute(stmt).first() is not None
 
-    def list_all(self, skip: int = 0, limit: int = 100) -> list[EbookORM]:
-        stmt = select(EbookORM).order_by(EbookORM.title).offset(skip).limit(limit)
+    def list_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        *,
+        publisher_contains: str | None = None,
+        category_contains: str | None = None,
+        has_errors: bool | None = None,
+    ) -> list[EbookORM]:
+        stmt = select(EbookORM)
+        if publisher_contains and (t := publisher_contains.strip()):
+            pattern = f"%{_escape_like_fragment(t)}%"
+            stmt = stmt.where(EbookORM.publisher.ilike(pattern, escape="\\"))
+        if category_contains and (t := category_contains.strip()):
+            pattern = f"%{_escape_like_fragment(t)}%"
+            stmt = stmt.where(EbookORM.category.ilike(pattern, escape="\\"))
+        if has_errors is not None:
+            stmt = stmt.where(EbookORM.has_errors == has_errors)
+        stmt = stmt.order_by(EbookORM.title).offset(skip).limit(limit)
         return list(self._session.execute(stmt).scalars().all())
 
     def update(self, ebook_id: uuid.UUID, data: dict) -> EbookORM | None:

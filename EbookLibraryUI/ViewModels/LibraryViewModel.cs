@@ -8,20 +8,51 @@ using EbookLibraryUI.Services;
 
 namespace EbookLibraryUI.ViewModels;
 
+public enum LibraryErrorFilter
+{
+    All,
+    HasErrorsOnly,
+    NoErrorsOnly,
+}
+
 public partial class LibraryViewModel : ObservableObject
 {
+    private const int PageSize = 15;
+
     private readonly IEbookApiService _api;
+
+    private int _nextSkip;
+    private string _appliedPublisher = string.Empty;
+    private string _appliedCategory = string.Empty;
+    private LibraryErrorFilter _appliedErrorFilter = LibraryErrorFilter.All;
 
     public ObservableCollection<EbookDto> Books { get; } = [];
 
     [ObservableProperty]
+    private string _publisherFilterText = string.Empty;
+
+    [ObservableProperty]
+    private string _categoryFilterText = string.Empty;
+
+    [ObservableProperty]
+    private LibraryErrorFilter _errorFilter = LibraryErrorFilter.All;
+
+    [ObservableProperty]
     private bool _isLoading;
+
+    [ObservableProperty]
+    private bool _isLoadingMore;
+
+    [ObservableProperty]
+    private bool _hasMorePages = true;
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
     private EbookDto? _selectedBook;
+
+    public bool IsLibraryBusy => IsLoading || IsLoadingMore;
 
     public event Action<EbookDto>? EditRequested;
 
@@ -30,27 +61,113 @@ public partial class LibraryViewModel : ObservableObject
         _api = api;
     }
 
+    partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsLibraryBusy));
+
+    partial void OnIsLoadingMoreChanged(bool value) => OnPropertyChanged(nameof(IsLibraryBusy));
+
     [RelayCommand]
     private async Task LoadBooksAsync()
+    {
+        await ReloadFromServerAsync(appliedFromDraft: false);
+    }
+
+    [RelayCommand]
+    private async Task ApplyFilterAsync()
+    {
+        await ReloadFromServerAsync(appliedFromDraft: true);
+    }
+
+    [RelayCommand]
+    private Task LoadMoreAsync() => AppendNextPageAsync();
+
+    /// <summary>Called from the view when the user scrolls near the end of the list.</summary>
+    public Task TryLoadNextPageIfNeededAsync() => AppendNextPageAsync();
+
+    private async Task AppendNextPageAsync()
+    {
+        if (!HasMorePages || IsLoadingMore || IsLoading)
+            return;
+
+        IsLoadingMore = true;
+        StatusMessage = "Loading more…";
+        try
+        {
+            var batch = await FetchPageAsync();
+            foreach (var b in batch)
+                Books.Add(b);
+            AdvancePaging(batch.Count);
+            StatusMessage = $"{Books.Count} book(s) shown.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error loading more: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingMore = false;
+        }
+    }
+
+    private async Task ReloadFromServerAsync(bool appliedFromDraft)
     {
         IsLoading = true;
         StatusMessage = "Loading…";
         try
         {
-            var books = await _api.GetAllAsync();
+            if (appliedFromDraft)
+            {
+                _appliedPublisher = PublisherFilterText.Trim();
+                _appliedCategory = CategoryFilterText.Trim();
+                _appliedErrorFilter = ErrorFilter;
+            }
+
             Books.Clear();
-            foreach (var b in books)
+            _nextSkip = 0;
+            HasMorePages = true;
+
+            var batch = await FetchPageAsync();
+            foreach (var b in batch)
                 Books.Add(b);
-            StatusMessage = $"{Books.Count} book(s) loaded.";
+            AdvancePaging(batch.Count);
+
+            StatusMessage = $"{Books.Count} book(s) shown.";
         }
         catch (Exception ex)
         {
             StatusMessage = $"Error loading books: {ex.Message}";
+            HasMorePages = false;
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    private async Task<List<EbookDto>> FetchPageAsync()
+    {
+        bool? hasErrors = _appliedErrorFilter switch
+        {
+            LibraryErrorFilter.All => null,
+            LibraryErrorFilter.HasErrorsOnly => true,
+            LibraryErrorFilter.NoErrorsOnly => false,
+            _ => null,
+        };
+
+        string? publisher = string.IsNullOrWhiteSpace(_appliedPublisher) ? null : _appliedPublisher;
+        string? category = string.IsNullOrWhiteSpace(_appliedCategory) ? null : _appliedCategory;
+
+        return await _api.GetAllAsync(
+            skip: _nextSkip,
+            limit: PageSize,
+            publisherContains: publisher,
+            categoryContains: category,
+            hasErrors: hasErrors);
+    }
+
+    private void AdvancePaging(int returnedCount)
+    {
+        _nextSkip += returnedCount;
+        HasMorePages = returnedCount >= PageSize;
     }
 
     [RelayCommand]

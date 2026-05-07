@@ -20,13 +20,28 @@ public class EbookApiService : IEbookApiService
         _http = http;
     }
 
-    public async Task<List<EbookDto>> GetAllAsync(int skip = 0, int limit = 100, CancellationToken ct = default)
+    public async Task<List<EbookDto>> GetAllAsync(
+        int skip = 0,
+        int limit = 15,
+        string? publisherContains = null,
+        string? categoryContains = null,
+        bool? hasErrors = null,
+        CancellationToken ct = default)
     {
-        var result = await _http.GetFromJsonAsync<List<EbookDto>>(
-            $"api/ebooks?skip={skip}&limit={limit}",
-            _jsonOptions,
-            ct
-        );
+        var qs = new List<string>
+        {
+            $"skip={skip}",
+            $"limit={limit}",
+        };
+        if (!string.IsNullOrWhiteSpace(publisherContains))
+            qs.Add($"publisher={Uri.EscapeDataString(publisherContains.Trim())}");
+        if (!string.IsNullOrWhiteSpace(categoryContains))
+            qs.Add($"category={Uri.EscapeDataString(categoryContains.Trim())}");
+        if (hasErrors.HasValue)
+            qs.Add($"has_errors={(hasErrors.Value ? "true" : "false")}");
+
+        var url = $"api/ebooks?{string.Join("&", qs)}";
+        var result = await _http.GetFromJsonAsync<List<EbookDto>>(url, _jsonOptions, ct);
         return result ?? [];
     }
 

@@ -1,11 +1,13 @@
 <Page x:Class="EbookLibraryUI.Views.LibraryView"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:vm="clr-namespace:EbookLibraryUI.ViewModels"
       Title="Library"
       Background="{StaticResource SurfaceBrush}">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -25,11 +27,65 @@
             <ProgressBar IsIndeterminate="True"
                          Width="100" Height="4"
                          VerticalAlignment="Center"
-                         Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+                         Visibility="{Binding IsLibraryBusy, Converter={StaticResource BoolToVisibilityConverter}}" />
         </StackPanel>
 
+        <!-- Filters -->
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="12,10"
+                Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Filter by"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,16,0" />
+                <TextBlock Text="Publisher"
+                           Style="{StaticResource FieldLabelStyle}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <TextBox Width="200"
+                         MinHeight="26"
+                         VerticalContentAlignment="Center"
+                         VerticalAlignment="Center"
+                         Margin="0,0,20,0"
+                         Text="{Binding PublisherFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="Category"
+                           Style="{StaticResource FieldLabelStyle}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <TextBox Width="180"
+                         MinHeight="26"
+                         VerticalContentAlignment="Center"
+                         VerticalAlignment="Center"
+                         Margin="0,0,20,0"
+                         Text="{Binding CategoryFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="Has error"
+                           Style="{StaticResource FieldLabelStyle}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <ComboBox Width="130"
+                          VerticalAlignment="Center"
+                          Margin="0,0,12,0"
+                          SelectedValue="{Binding ErrorFilter, Mode=TwoWay}"
+                          SelectedValuePath="Tag">
+                    <ComboBoxItem Content="All" Tag="{x:Static vm:LibraryErrorFilter.All}" />
+                    <ComboBoxItem Content="Has error" Tag="{x:Static vm:LibraryErrorFilter.HasErrorsOnly}" />
+                    <ComboBoxItem Content="No error" Tag="{x:Static vm:LibraryErrorFilter.NoErrorsOnly}" />
+                </ComboBox>
+                <Button Content="Apply filter"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        VerticalAlignment="Center"
+                        Command="{Binding ApplyFilterCommand}" />
+            </StackPanel>
+        </Border>
+
         <!-- Book grid -->
-        <DataGrid Grid.Row="1"
+        <DataGrid x:Name="BookGrid"
+                  Grid.Row="2"
                   ItemsSource="{Binding Books}"
                   SelectedItem="{Binding SelectedBook}"
                   AutoGenerateColumns="False"
@@ -47,6 +103,19 @@
                   ToolTip="Double-click a row to open with your default reader."
                   MouseDoubleClick="BookGrid_OnMouseDoubleClick">
 
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasErrors}" Value="True">
+                            <Setter Property="BorderBrush" Value="#FFF5A8A8" />
+                            <Setter Property="BorderThickness" Value="2" />
+                            <Setter Property="Background" Value="#12E53935" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
             <DataGrid.Columns>
 
                 <!-- Cover thumbnail -->
@@ -57,6 +126,21 @@
                                    Width="40" Height="56"
                                    Stretch="UniformToFill"
                                    Margin="4,2" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Error flag -->
+                <DataGridTemplateColumn Header="" Width="32" CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="🚩"
+                                       FontSize="15"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource DangerBrush}"
+                                       ToolTip="Marked with processing errors (has_errors)"
+                                       Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisibilityConverter}}" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -102,7 +186,7 @@
         </DataGrid>
 
         <!-- Status bar -->
-        <TextBlock Grid.Row="2"
+        <TextBlock Grid.Row="3"
                    Text="{Binding StatusMessage}"
                    Foreground="{StaticResource SubtleTextBrush}"
                    Margin="0,8,0,0" />
