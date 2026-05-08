@@ -65,6 +65,13 @@ public class EbookApiService : IEbookApiService
     {
         try
         {
+            var cachedPattern = $"{id}.*";
+            var cachedFile = Directory
+                .EnumerateFiles(_coverCacheDir, cachedPattern, SearchOption.TopDirectoryOnly)
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(cachedFile) && File.Exists(cachedFile))
+                return new Uri(cachedFile).AbsoluteUri;
+
             using var response = await _http.GetAsync($"api/ebooks/{id}/cover", ct);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return null;
@@ -82,7 +89,11 @@ public class EbookApiService : IEbookApiService
 
             var localPath = Path.Combine(_coverCacheDir, $"{id}{ext}");
             await using var src = await response.Content.ReadAsStreamAsync(ct);
-            await using var dst = File.Create(localPath);
+            await using var dst = new FileStream(
+                localPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.Read);
             await src.CopyToAsync(dst, ct);
 
             return new Uri(localPath).AbsoluteUri;
