@@ -9,11 +9,13 @@ export interface EbookDto {
   description: string | null;
   category: string | null;
   subcategory: string | null;
+  tags: string[] | null;
   publisher: string | null;
   edition: string | null;
   language: string | null;
   page_count: number | null;
   file_name: string | null;
+  file_path: string | null;
   cover_image_path: string | null;
   cover_image_mime_type: string | null;
   has_errors: boolean;
@@ -25,7 +27,11 @@ export function getAuthorsDisplay(ebook: EbookDto): string {
   return ebook.authors?.join(', ') ?? '';
 }
 
+export function getTagsDisplay(ebook: EbookDto): string {
+  return ebook.tags?.length ? ebook.tags.join(', ') : '—';
+}
+
 export function getCoverUrl(ebook: EbookDto): string | null {
   if (!ebook.cover_image_path) return null;
-  return `${API_BASE}/covers/${ebook.cover_image_path}`;
+  return `${API_BASE}/api/ebooks/${ebook.id}/cover`;
 }

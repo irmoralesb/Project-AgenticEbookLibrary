@@ -4,8 +4,8 @@ All tests use mocks — no real EPUB files are required.
 The ebooklib.epub.EpubBook object is mocked to return controlled metadata,
 mirroring the style used in test_extractor_tools.py.
 """
-from unittest.mock import MagicMock, Mock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -13,6 +13,23 @@ from extractors.metadata_extractor.epub_metadata_extractor import EpubDataExtrac
 from extractors.models.errors import EpubReadError
 from extractors.models.models import CoverExtractionResult, QueryCategoryMetadata, QueryTitleWithEdition
 from extractors.tools.page_count_extractor import PageCounterExtractor
+
+
+@pytest.fixture(autouse=True)
+def _stub_epub_sidecar_cover(monkeypatch: pytest.MonkeyPatch) -> None:
+    """extract_metadata always requests a PNG sidecar; keep tests focused on other fields."""
+
+    def fake_save(
+        self: EpubDataExtractor,
+        book_path: Path,
+        *,
+        prior_cover_path: str | None = None,
+    ) -> tuple[Path, str, bool]:
+        dest = book_path.with_suffix(".png")
+        dest.write_bytes(b"\x89PNG\r\n\x1a\n")
+        return dest.resolve(), "image/png", False
+
+    monkeypatch.setattr(EpubDataExtractor, "extract_and_save_cover_image", fake_save)
 
 
 # ---------------------------------------------------------------------------

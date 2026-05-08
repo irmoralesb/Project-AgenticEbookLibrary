@@ -5,9 +5,6 @@ namespace EbookLibraryUI.Models;
 /// <summary>Mirrors the EbookResponse schema returned by the FastAPI backend.</summary>
 public class EbookDto
 {
-    /// <summary>Optional local directory where cover images are stored.</summary>
-    public static string CoverImageRootPath { get; set; } = string.Empty;
-
     [JsonPropertyName("id")]
     public Guid Id { get; set; }
 
@@ -32,6 +29,9 @@ public class EbookDto
     [JsonPropertyName("subcategory")]
     public string? Subcategory { get; set; }
 
+    [JsonPropertyName("tags")]
+    public List<string> Tags { get; set; } = [];
+
     [JsonPropertyName("publisher")]
     public string? Publisher { get; set; }
 
@@ -46,6 +46,9 @@ public class EbookDto
 
     [JsonPropertyName("file_name")]
     public string? FileName { get; set; }
+
+    [JsonPropertyName("file_path")]
+    public string? FilePath { get; set; }
 
     [JsonPropertyName("cover_image_path")]
     public string? CoverImagePath { get; set; }
@@ -65,43 +68,10 @@ public class EbookDto
     /// <summary>Comma-separated authors string for display in table cells.</summary>
     public string AuthorsDisplay => Authors.Count > 0 ? string.Join(", ", Authors) : "—";
 
+    /// <summary>Comma-separated tags for grid display.</summary>
+    public string TagsDisplay => Tags.Count > 0 ? string.Join(", ", Tags) : "—";
+
     /// <summary>Absolute local file URI for the cover image shown in WPF.</summary>
-    public string? CoverUrl
-    {
-        get
-        {
-            var extension = CoverExtension;
-            if (string.IsNullOrWhiteSpace(extension))
-                return BuildFileUri(CoverImagePath);
-
-            if (!string.IsNullOrWhiteSpace(CoverImageRootPath) && !string.IsNullOrWhiteSpace(FileName))
-            {
-                var fileName = $"{System.IO.Path.GetFileNameWithoutExtension(FileName)}{extension}";
-                var candidate = System.IO.Path.Combine(CoverImageRootPath, fileName);
-                return BuildFileUri(candidate);
-            }
-
-            return BuildFileUri(CoverImagePath);
-        }
-    }
-
-    private string CoverExtension =>
-        CoverImageMimeType switch
-        {
-            "image/png" => ".png",
-            "image/jpeg" => ".jpg",
-            "image/gif" => ".gif",
-            _ => string.Empty,
-        };
-
-    private static string? BuildFileUri(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return null;
-
-        var normalizedPath = path.Trim();
-        return Uri.TryCreate(normalizedPath, UriKind.Absolute, out var absoluteUri)
-            ? absoluteUri.IsFile ? absoluteUri.AbsoluteUri : null
-            : new Uri(normalizedPath, UriKind.Absolute).AbsoluteUri;
-    }
+    [JsonIgnore]
+    public string? CoverUrl { get; set; }
 }

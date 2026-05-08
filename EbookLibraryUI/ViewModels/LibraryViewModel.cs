@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EbookLibraryUI.Models;
@@ -6,15 +8,43 @@ using EbookLibraryUI.Services;
 
 namespace EbookLibraryUI.ViewModels;
 
+public enum LibraryErrorFilter
+{
+    All,
+    HasErrorsOnly,
+    NoErrorsOnly,
+}
+
 public partial class LibraryViewModel : ObservableObject
 {
+    private const int PageSize = 15;
+
     private readonly IEbookApiService _api;
-    private readonly IAppSettingsService _appSettings;
+
+    private int _nextSkip;
+    private string _appliedPublisher = string.Empty;
+    private string _appliedCategory = string.Empty;
+    private LibraryErrorFilter _appliedErrorFilter = LibraryErrorFilter.All;
 
     public ObservableCollection<EbookDto> Books { get; } = [];
 
     [ObservableProperty]
+    private string _publisherFilterText = string.Empty;
+
+    [ObservableProperty]
+    private string _categoryFilterText = string.Empty;
+
+    [ObservableProperty]
+    private LibraryErrorFilter _errorFilter = LibraryErrorFilter.All;
+
+    [ObservableProperty]
     private bool _isLoading;
+
+    [ObservableProperty]
+    private bool _isLoadingMore;
+
+    [ObservableProperty]
+    private bool _hasMorePages = true;
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
@@ -22,40 +52,133 @@ public partial class LibraryViewModel : ObservableObject
     [ObservableProperty]
     private EbookDto? _selectedBook;
 
-    [ObservableProperty]
-    private string _coverImagePath = string.Empty;
+    public bool IsLibraryBusy => IsLoading || IsLoadingMore;
 
     public event Action<EbookDto>? EditRequested;
 
-    public LibraryViewModel(IEbookApiService api, IAppSettingsService appSettings)
+    public LibraryViewModel(IEbookApiService api)
     {
         _api = api;
-        _appSettings = appSettings;
-        CoverImagePath = _appSettings.CoverImagePath;
-        _appSettings.CoverImagePathChanged += OnCoverImagePathChanged;
     }
+
+    partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsLibraryBusy));
+
+    partial void OnIsLoadingMoreChanged(bool value) => OnPropertyChanged(nameof(IsLibraryBusy));
 
     [RelayCommand]
     private async Task LoadBooksAsync()
+    {
+        await ReloadFromServerAsync(appliedFromDraft: false);
+    }
+
+    [RelayCommand]
+    private async Task ApplyFilterAsync()
+    {
+        await ReloadFromServerAsync(appliedFromDraft: true);
+    }
+
+    [RelayCommand]
+    private Task LoadMoreAsync() => AppendNextPageAsync();
+
+    /// <summary>Called from the view when the user scrolls near the end of the list.</summary>
+    public Task TryLoadNextPageIfNeededAsync() => AppendNextPageAsync();
+
+    private async Task AppendNextPageAsync()
+    {
+        if (!HasMorePages || IsLoadingMore || IsLoading)
+            return;
+
+        IsLoadingMore = true;
+        StatusMessage = "Loading more…";
+        try
+        {
+            var batch = await FetchPageAsync();
+            await PopulateCoverUrlsAsync(batch);
+            foreach (var b in batch)
+                Books.Add(b);
+            AdvancePaging(batch.Count);
+            StatusMessage = $"{Books.Count} book(s) shown.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error loading more: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingMore = false;
+        }
+    }
+
+    private async Task ReloadFromServerAsync(bool appliedFromDraft)
     {
         IsLoading = true;
         StatusMessage = "Loading…";
         try
         {
-            var books = await _api.GetAllAsync();
+            if (appliedFromDraft)
+            {
+                _appliedPublisher = PublisherFilterText.Trim();
+                _appliedCategory = CategoryFilterText.Trim();
+                _appliedErrorFilter = ErrorFilter;
+            }
+
             Books.Clear();
-            foreach (var b in books)
+            _nextSkip = 0;
+            HasMorePages = true;
+
+            var batch = await FetchPageAsync();
+            await PopulateCoverUrlsAsync(batch);
+            foreach (var b in batch)
                 Books.Add(b);
-            StatusMessage = $"{Books.Count} book(s) loaded.";
+            AdvancePaging(batch.Count);
+
+            StatusMessage = $"{Books.Count} book(s) shown.";
         }
         catch (Exception ex)
         {
             StatusMessage = $"Error loading books: {ex.Message}";
+            HasMorePages = false;
         }
         finally
         {
             IsLoading = false;
         }
+    }
+
+    private async Task<List<EbookDto>> FetchPageAsync()
+    {
+        bool? hasErrors = _appliedErrorFilter switch
+        {
+            LibraryErrorFilter.All => null,
+            LibraryErrorFilter.HasErrorsOnly => true,
+            LibraryErrorFilter.NoErrorsOnly => false,
+            _ => null,
+        };
+
+        string? publisher = string.IsNullOrWhiteSpace(_appliedPublisher) ? null : _appliedPublisher;
+        string? category = string.IsNullOrWhiteSpace(_appliedCategory) ? null : _appliedCategory;
+
+        return await _api.GetAllAsync(
+            skip: _nextSkip,
+            limit: PageSize,
+            publisherContains: publisher,
+            categoryContains: category,
+            hasErrors: hasErrors);
+    }
+
+    private async Task PopulateCoverUrlsAsync(IEnumerable<EbookDto> books)
+    {
+        var tasks = books.Select(async book =>
+        {
+            book.CoverUrl = await _api.DownloadCoverToTempAsync(book.Id);
+        });
+        await Task.WhenAll(tasks);
+    }
+
+    private void AdvancePaging(int returnedCount)
+    {
+        _nextSkip += returnedCount;
+        HasMorePages = returnedCount >= PageSize;
     }
 
     [RelayCommand]
@@ -79,10 +202,46 @@ public partial class LibraryViewModel : ObservableObject
         EditRequested?.Invoke(book);
     }
 
-    private void OnCoverImagePathChanged(object? sender, string value)
+    [RelayCommand]
+    private void OpenBook(EbookDto? book)
     {
-        CoverImagePath = value;
-        EbookDto.CoverImageRootPath = value;
-        _ = LoadBooksAsync();
+        if (book is null)
+        {
+            StatusMessage = "No book selected.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(book.FilePath))
+        {
+            StatusMessage = "This book has no file path on disk.";
+            return;
+        }
+
+        string path;
+        try
+        {
+            path = Path.GetFullPath(book.FilePath.Trim());
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Invalid file path: {ex.Message}";
+            return;
+        }
+
+        if (!File.Exists(path))
+        {
+            StatusMessage = $"File not found: {path}";
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            StatusMessage = $"Opened: {book.Title ?? book.FileName ?? path}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not open file: {ex.Message}";
+        }
     }
 }

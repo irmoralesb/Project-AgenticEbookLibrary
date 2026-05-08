@@ -14,7 +14,6 @@ if str(_ingestion_root) not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from api.routers import ebooks, ingest, system
 
@@ -31,11 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Serve extracted cover images at /covers/<filename>
-_cover_dir = Path(__file__).resolve().parent.parent / "cover_images"
-_cover_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/covers", StaticFiles(directory=str(_cover_dir)), name="covers")
 
 app.include_router(ebooks.router)
 app.include_router(ingest.router)

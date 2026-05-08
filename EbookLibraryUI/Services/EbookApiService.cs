@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.IO;
 using EbookLibraryUI.Models;
 
 namespace EbookLibraryUI.Services;
@@ -9,6 +10,7 @@ namespace EbookLibraryUI.Services;
 public class EbookApiService : IEbookApiService
 {
     private readonly HttpClient _http;
+    private readonly string _coverCacheDir;
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -18,15 +20,32 @@ public class EbookApiService : IEbookApiService
     public EbookApiService(HttpClient http)
     {
         _http = http;
+        _coverCacheDir = Path.Combine(Path.GetTempPath(), "AgenticEbookLibrary", "covers");
+        Directory.CreateDirectory(_coverCacheDir);
     }
 
-    public async Task<List<EbookDto>> GetAllAsync(int skip = 0, int limit = 100, CancellationToken ct = default)
+    public async Task<List<EbookDto>> GetAllAsync(
+        int skip = 0,
+        int limit = 15,
+        string? publisherContains = null,
+        string? categoryContains = null,
+        bool? hasErrors = null,
+        CancellationToken ct = default)
     {
-        var result = await _http.GetFromJsonAsync<List<EbookDto>>(
-            $"api/ebooks?skip={skip}&limit={limit}",
-            _jsonOptions,
-            ct
-        );
+        var qs = new List<string>
+        {
+            $"skip={skip}",
+            $"limit={limit}",
+        };
+        if (!string.IsNullOrWhiteSpace(publisherContains))
+            qs.Add($"publisher={Uri.EscapeDataString(publisherContains.Trim())}");
+        if (!string.IsNullOrWhiteSpace(categoryContains))
+            qs.Add($"category={Uri.EscapeDataString(categoryContains.Trim())}");
+        if (hasErrors.HasValue)
+            qs.Add($"has_errors={(hasErrors.Value ? "true" : "false")}");
+
+        var url = $"api/ebooks?{string.Join("&", qs)}";
+        var result = await _http.GetFromJsonAsync<List<EbookDto>>(url, _jsonOptions, ct);
         return result ?? [];
     }
 
@@ -35,6 +54,38 @@ public class EbookApiService : IEbookApiService
         try
         {
             return await _http.GetFromJsonAsync<EbookDto>($"api/ebooks/{id}", _jsonOptions, ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<string?> DownloadCoverToTempAsync(Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await _http.GetAsync($"api/ebooks/{id}/cover", ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            response.EnsureSuccessStatusCode();
+
+            var ext = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() switch
+            {
+                "image/png" => ".png",
+                "image/jpeg" => ".jpg",
+                "image/jpg" => ".jpg",
+                "image/webp" => ".webp",
+                "image/gif" => ".gif",
+                _ => ".img",
+            };
+
+            var localPath = Path.Combine(_coverCacheDir, $"{id}{ext}");
+            await using var src = await response.Content.ReadAsStreamAsync(ct);
+            await using var dst = File.Create(localPath);
+            await src.CopyToAsync(dst, ct);
+
+            return new Uri(localPath).AbsoluteUri;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {

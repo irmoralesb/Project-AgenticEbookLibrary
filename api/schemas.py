@@ -5,29 +5,11 @@ can evolve independently of the internal EbookMetadata / EbookORM types.
 """
 
 import uuid
-from typing import Literal
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-Category = Literal[
-    "Programming",
-    "Software Engineering & Design Patterns",
-    "Data Structures & Algorithms",
-    "Web Development",
-    "Mobile App Development",
-    "Cybersecurity & Ethical Hacking",
-    "DevOps",
-    "Operating Systems",
-    "Cloud Services",
-    "Architecture",
-    "Networking",
-    "Databases",
-    "AI/ML",
-    "Project Management",
-    "Video Game Development",
-    "Drawing",
-    "Other",
-]
+TagKeyword = Annotated[str, Field(max_length=80)]
 
 
 class EbookResponse(BaseModel):
@@ -41,11 +23,13 @@ class EbookResponse(BaseModel):
     description: str | None
     category: str | None
     subcategory: str | None
+    tags: list[str]
     publisher: str | None
     edition: str | None
     language: str | None
     page_count: int | None
     file_name: str | None
+    file_path: str | None
     cover_image_path: str | None
     cover_image_mime_type: str | None
     has_errors: bool
@@ -63,12 +47,14 @@ class EbookUpdateRequest(BaseModel):
     authors: list[str] | None = None
     year: int | None = Field(default=None, ge=1950, le=2050)
     description: str | None = Field(default=None, max_length=2000)
-    category: Category | None = None
+    category: str | None = Field(default=None, max_length=60)
     subcategory: str | None = Field(default=None, max_length=40)
+    tags: list[TagKeyword] | None = Field(default=None, max_length=50)
     publisher: str | None = Field(default=None, max_length=60)
     edition: str | None = Field(default=None, max_length=20)
     language: str | None = Field(default=None, max_length=10)
     page_count: int | None = Field(default=None, ge=0)
+    file_path: str | None = Field(default=None, max_length=2048)
     has_errors: bool | None = None
 
 
@@ -76,19 +62,10 @@ class IngestRequest(BaseModel):
     """Body for POST /api/ingest/start."""
 
     path: str = Field(description="Absolute directory path to scan for ebooks.")
-    extension: str = Field(
-        default="pdf",
-        description="File extension to filter (pdf or epub).",
-        pattern=r"^(pdf|epub)$",
-    )
     limit: int | None = Field(
         default=None,
         ge=1,
         description="Maximum number of new books to process.",
-    )
-    cover_image_path: str | None = Field(
-        default=None,
-        description="Absolute local directory path where extracted cover images will be stored.",
     )
 
 

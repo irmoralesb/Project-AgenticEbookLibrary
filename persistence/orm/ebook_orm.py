@@ -13,31 +13,6 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-_VALID_CATEGORIES = (
-    "Programming",
-    "Software Engineering & Design Patterns",
-    "Data Structures & Algorithms",
-    "Web Development",
-    "Mobile App Development",
-    "Cybersecurity & Ethical Hacking",
-    "DevOps",
-    "Operating Systems",
-    "Cloud Services",
-    "Architecture",
-    "Networking",
-    "Databases",
-    "AI/ML",
-    "Project Management",
-    "Video Game Development",
-    "Drawing",
-    "Other",
-)
-
-_CATEGORY_CHECK = "category IN ({})".format(
-    ", ".join(f"'{v}'" for v in _VALID_CATEGORIES)
-)
-
-
 class Base(DeclarativeBase):
     pass
 
@@ -45,7 +20,6 @@ class Base(DeclarativeBase):
 class EbookORM(Base):
     __tablename__ = "ebooks"
     __table_args__ = (
-        CheckConstraint(_CATEGORY_CHECK, name="ck_ebooks_category"),
         CheckConstraint(
             "year IS NULL OR (year >= 1950 AND year <= 2050)",
             name="ck_ebooks_year",
@@ -74,6 +48,9 @@ class EbookORM(Base):
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     category: Mapped[str] = mapped_column(String(60), nullable=False)
     subcategory: Mapped[str] = mapped_column(String(40), nullable=False)
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(String), nullable=False, default=list
+    )
     publisher: Mapped[str] = mapped_column(
         String(60), nullable=False, default="Unknown"
     )
@@ -83,6 +60,7 @@ class EbookORM(Base):
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    file_path: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     cover_image_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     cover_image_mime_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     has_errors: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

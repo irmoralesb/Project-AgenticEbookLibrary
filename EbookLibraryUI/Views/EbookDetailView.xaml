@@ -29,8 +29,12 @@
                         BorderThickness="1"
                         CornerRadius="4"
                         Background="White"
-                        ClipToBounds="True">
-                    <Image Source="{Binding CoverUrl}"
+                        ClipToBounds="True"
+                        Cursor="Hand"
+                        ToolTip="Click to preview original size"
+                        MouseLeftButtonUp="CoverBorder_OnMouseLeftButtonUp">
+                    <Image x:Name="CoverImage"
+                           Source="{Binding CoverUrl}"
                            Stretch="UniformToFill" />
                 </Border>
 
@@ -74,13 +78,23 @@
                     </Grid>
 
                     <TextBlock Text="Category" Style="{StaticResource FieldLabelStyle}" />
-                    <ComboBox ItemsSource="{Binding Categories, Mode=OneTime}"
-                              SelectedItem="{Binding Category}"
-                              Padding="8,6" FontSize="13" />
+                    <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13" />
 
                     <TextBlock Text="Subcategory" Style="{StaticResource FieldLabelStyle}" />
                     <TextBox Text="{Binding Subcategory, UpdateSourceTrigger=PropertyChanged}"
                              Padding="8,6" FontSize="13" />
+
+                    <TextBlock Text="Tags" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="Keywords about this book (comma-separated). Not limited to category."
+                               Foreground="{StaticResource SubtleTextBrush}"
+                               FontSize="11"
+                               Margin="0,0,0,4"
+                               TextWrapping="Wrap" />
+                    <TextBox Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13"
+                             AcceptsReturn="False"
+                             ToolTip="Example: C#, SOLID Principles, Design Patterns" />
 
                     <!-- Publisher + Edition row -->
                     <Grid>

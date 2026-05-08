@@ -1,9 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.IO;
+using System.Text;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EbookLibraryUI.Models;
 using EbookLibraryUI.Services;
+using Microsoft.Win32;
 
 namespace EbookLibraryUI.ViewModels;
 
@@ -11,19 +15,13 @@ public partial class IngestViewModel : ObservableObject
 {
     private readonly IEbookApiService _api;
     private readonly IFolderPickerService _folderPicker;
-    private readonly IAppSettingsService _appSettings;
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<string> ProgressLog { get; } = [];
 
-    public IReadOnlyList<string> Extensions { get; } = ["pdf", "epub"];
-
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartIngestCommand))]
     private string _selectedPath = string.Empty;
-
-    [ObservableProperty]
-    private string _selectedExtension = "pdf";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartIngestCommand))]
@@ -32,17 +30,15 @@ public partial class IngestViewModel : ObservableObject
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
-    [ObservableProperty]
-    private string _coverImagePath = string.Empty;
-
-    public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker, IAppSettingsService appSettings)
+    public IngestViewModel(IEbookApiService api, IFolderPickerService folderPicker)
     {
         _api = api;
         _folderPicker = folderPicker;
-        _appSettings = appSettings;
-        CoverImagePath = _appSettings.CoverImagePath;
-        _appSettings.CoverImagePathChanged += OnCoverImagePathChanged;
+        ProgressLog.CollectionChanged += OnProgressLogCollectionChanged;
     }
+
+    private void OnProgressLogCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        SaveLogCommand.NotifyCanExecuteChanged();
 
     [RelayCommand]
     private void BrowseFolder()
@@ -64,22 +60,13 @@ public partial class IngestViewModel : ObservableObject
 
         try
         {
-            var normalizedCoverImagePath = string.IsNullOrWhiteSpace(_appSettings.CoverImagePath)
-                ? null
-                : _appSettings.CoverImagePath.Trim();
-            CoverImagePath = normalizedCoverImagePath ?? string.Empty;
-            EbookDto.CoverImageRootPath = CoverImagePath;
-
             var startResponse = await _api.StartIngestAsync(new IngestRequestDto
             {
                 Path = SelectedPath,
-                Extension = SelectedExtension,
-                CoverImagePath = normalizedCoverImagePath,
             }, _cts.Token);
 
             await foreach (var evt in _api.StreamIngestAsync(startResponse.JobId, _cts.Token))
             {
-                // Marshal to UI thread.
                 Application.Current.Dispatcher.Invoke(() => ProgressLog.Add(evt.Message));
 
                 if (evt.IsEndOfStream)
@@ -110,9 +97,30 @@ public partial class IngestViewModel : ObservableObject
         _cts?.Cancel();
     }
 
-    private void OnCoverImagePathChanged(object? sender, string value)
+    private bool CanSaveLog() => ProgressLog.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanSaveLog))]
+    private async Task SaveLogAsync()
     {
-        CoverImagePath = value;
-        EbookDto.CoverImageRootPath = value;
+        var dlg = new SaveFileDialog
+        {
+            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
+            DefaultExt = ".txt",
+            FileName = "ingest-log.txt",
+        };
+
+        if (dlg.ShowDialog() != true)
+            return;
+
+        try
+        {
+            var text = string.Join(Environment.NewLine, ProgressLog);
+            await File.WriteAllTextAsync(dlg.FileName, text, Encoding.UTF8).ConfigureAwait(true);
+            StatusMessage = $"Log saved to {dlg.FileName}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not save log: {ex.Message}";
+        }
     }
 }

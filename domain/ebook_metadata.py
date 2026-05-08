@@ -1,26 +1,10 @@
-from typing import Literal
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-Category = Literal[
-    "Programming",
-    "Software Engineering & Design Patterns",
-    "Data Structures & Algorithms",
-    "Web Development",
-    "Mobile App Development",
-    "Cybersecurity & Ethical Hacking",
-    "DevOps",
-    "Operating Systems",
-    "Cloud Services",
-    "Architecture",
-    "Networking",
-    "Databases",
-    "AI/ML",
-    "Project Management",
-    "Video Game Development",
-    "Drawing",
-    "Other",
-]
+Category = str
+
+TagKeyword = Annotated[str, Field(max_length=80)]
 
 
 class EbookMetadata(BaseModel):
@@ -52,12 +36,20 @@ class EbookMetadata(BaseModel):
     )
     category: Category | None = Field(
         default="Other",
-        description="High-level shelf, e.g. Programming, Networking, Architecture",
+        max_length=60,
+        description="High-level shelf label for the book’s topic (concise, ≤60 characters).",
     )
     subcategory: str | None = Field(
         default="Other",
         max_length=40,
         description="Narrower topic, e.g. C#, Python, Domain Driven Design",
+    )
+    tags: list[TagKeyword] = Field(
+        default_factory=list,
+        max_length=50,
+        description=(
+            "Topic keywords for search and display; free-form (not limited to category labels)."
+        ),
     )
     publisher: str | None = Field(
         default="Unknown", max_length=60, description="Publisher name"
@@ -77,6 +69,11 @@ class EbookMetadata(BaseModel):
     )
     file_name: str | None = Field(
         default="Not Found", max_length=512, description="The Pdf file name"
+    )
+    file_path: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="Absolute path to the ebook file on disk",
     )
     cover_image_path: str | None = Field(
         default=None, max_length=1024, description="Stored path for extracted cover image"

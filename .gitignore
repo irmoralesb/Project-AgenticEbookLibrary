@@ -210,7 +210,6 @@ __marimo__/
 EbookLibraryUI/bin/
 EbookLibraryUI/obj/
 
-# Runtime data - cover images downloaded/extracted during ingestion
-cover_images/
-
 .vs/
+
+test_results/

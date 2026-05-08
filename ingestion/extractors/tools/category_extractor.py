@@ -10,6 +10,6 @@ class CategoryExtractor:
         result: str = ""
         for text_range in texts:
             result = self.llm.extract_category(text_range)
-            if result.category is not "Other":
+            if result.category != "Other":
                 return result
         return result

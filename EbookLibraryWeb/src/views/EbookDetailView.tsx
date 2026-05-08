@@ -40,6 +40,7 @@ interface FormState {
   description: string;
   category: string;
   subcategory: string;
+  tagsText: string;
   publisher: string;
   edition: string;
   language: string;
@@ -56,6 +57,7 @@ function emptyForm(): FormState {
     description: '',
     category: '',
     subcategory: '',
+    tagsText: '',
     publisher: '',
     edition: '',
     language: '',
@@ -87,6 +89,7 @@ export default function EbookDetailView() {
       description: ebook.description ?? '',
       category: ebook.category ?? '',
       subcategory: ebook.subcategory ?? '',
+      tagsText: ebook.tags?.join(', ') ?? '',
       publisher: ebook.publisher ?? '',
       edition: ebook.edition ?? '',
       language: ebook.language ?? '',
@@ -119,6 +122,11 @@ export default function EbookDetailView() {
       .map((a) => a.trim())
       .filter(Boolean);
 
+    const tags = form.tagsText
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
     const dto: EbookUpdateDto = {
       title: form.title || null,
       isbn: form.isbn || null,
@@ -127,6 +135,7 @@ export default function EbookDetailView() {
       description: form.description || null,
       category: form.category || null,
       subcategory: form.subcategory || null,
+      tags,
       publisher: form.publisher || null,
       edition: form.edition || null,
       language: form.language || null,
@@ -274,6 +283,19 @@ export default function EbookDetailView() {
                       />
                     </Field>
                   </div>
+
+                  <Field
+                    label="Tags"
+                    hint="comma-separated keywords, any topic (not limited to category)"
+                  >
+                    <input
+                      type="text"
+                      value={form.tagsText}
+                      onChange={(e) => handleChange('tagsText', e.target.value)}
+                      placeholder="e.g. C#, SOLID Principles, Design Patterns"
+                      className={inputCls}
+                    />
+                  </Field>
 
                   {/* Publisher / Edition */}
                   <div className="grid grid-cols-2 gap-4">

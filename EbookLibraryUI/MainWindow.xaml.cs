@@ -1,6 +1,4 @@
 ﻿using System.Windows;
-using EbookLibraryUI.Models;
-using EbookLibraryUI.Services;
 using EbookLibraryUI.ViewModels;
 using EbookLibraryUI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,13 +25,6 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         BuildViews();
-        var appSettings = App.Services.GetRequiredService<IAppSettingsService>();
-        if (!appSettings.SettingsFileExists || !appSettings.HasConfiguredCoverImagePath)
-        {
-            PageFrame.Navigate(_settingsView);
-            return;
-        }
-
         ShowLibraryView(refresh: true);
     }
 
@@ -50,7 +41,7 @@ public partial class MainWindow : Window
         _settingsView = new SettingsView { DataContext = settingsVm };
 
         var detailVm = App.Services.GetRequiredService<EbookDetailViewModel>();
-        detailVm.SaveCompleted  += () => ShowLibraryView(refresh: true);
+        detailVm.SaveCompleted += () => ShowLibraryView(refresh: true);
         detailVm.CancelRequested += () => ShowLibraryView(refresh: false);
         _detailView = new EbookDetailView { DataContext = detailVm };
     }
@@ -71,7 +62,7 @@ public partial class MainWindow : Window
             _ = vm.LoadBooksCommand.ExecuteAsync(null);
     }
 
-    private void ShowDetailView(EbookDto book)
+    private void ShowDetailView(Models.EbookDto book)
     {
         if (_detailView?.DataContext is EbookDetailViewModel vm)
             vm.LoadFrom(book);

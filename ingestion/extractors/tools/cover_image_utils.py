@@ -16,21 +16,21 @@ def guess_mime_type_from_suffix(path: Path) -> str | None:
 
 def find_existing_cover(
     book_path: Path,
-    cover_output_dir: Path,
+    search_dir: Path,
     prior_cover_path: str | None,
 ) -> Path | None:
     """Return the resolved path of an existing cover image, or ``None``.
 
     Search order:
     1. ``prior_cover_path`` when it exists on disk.
-    2. Any file in ``cover_output_dir`` whose stem matches ``book_path.stem``.
+    2. Any image file in ``search_dir`` whose stem matches ``book_path.stem``.
     """
     if prior_cover_path:
         candidate = Path(prior_cover_path).expanduser()
         if candidate.exists():
             return candidate.resolve()
 
-    for candidate in sorted(cover_output_dir.glob(f"{book_path.stem}.*")):
+    for candidate in sorted(search_dir.glob(f"{book_path.stem}.*")):
         if candidate.is_file():
             return candidate.resolve()
 
