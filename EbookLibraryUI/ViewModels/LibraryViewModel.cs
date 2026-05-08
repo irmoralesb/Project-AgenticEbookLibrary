@@ -93,6 +93,7 @@ public partial class LibraryViewModel : ObservableObject
         try
         {
             var batch = await FetchPageAsync();
+            await PopulateCoverUrlsAsync(batch);
             foreach (var b in batch)
                 Books.Add(b);
             AdvancePaging(batch.Count);
@@ -126,6 +127,7 @@ public partial class LibraryViewModel : ObservableObject
             HasMorePages = true;
 
             var batch = await FetchPageAsync();
+            await PopulateCoverUrlsAsync(batch);
             foreach (var b in batch)
                 Books.Add(b);
             AdvancePaging(batch.Count);
@@ -162,6 +164,15 @@ public partial class LibraryViewModel : ObservableObject
             publisherContains: publisher,
             categoryContains: category,
             hasErrors: hasErrors);
+    }
+
+    private async Task PopulateCoverUrlsAsync(IEnumerable<EbookDto> books)
+    {
+        var tasks = books.Select(async book =>
+        {
+            book.CoverUrl = await _api.DownloadCoverToTempAsync(book.Id);
+        });
+        await Task.WhenAll(tasks);
     }
 
     private void AdvancePaging(int returnedCount)

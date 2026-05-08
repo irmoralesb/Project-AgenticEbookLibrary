@@ -10,27 +10,6 @@ public partial class EbookDetailViewModel : ObservableObject
     private readonly IEbookApiService _api;
     private Guid _ebookId;
 
-    public static IReadOnlyList<string> Categories { get; } =
-    [
-        "Programming",
-        "Software Engineering & Design Patterns",
-        "Data Structures & Algorithms",
-        "Web Development",
-        "Mobile App Development",
-        "Cybersecurity & Ethical Hacking",
-        "DevOps",
-        "Operating Systems",
-        "Cloud Services",
-        "Architecture",
-        "Networking",
-        "Databases",
-        "AI/ML",
-        "Project Management",
-        "Video Game Development",
-        "Drawing",
-        "Other",
-    ];
-
     [ObservableProperty] private string? _title;
     [ObservableProperty] private string? _isbn;
     [ObservableProperty] private string? _authorsText;

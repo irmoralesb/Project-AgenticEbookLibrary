@@ -72,25 +72,6 @@ public class EbookDto
     public string TagsDisplay => Tags.Count > 0 ? string.Join(", ", Tags) : "—";
 
     /// <summary>Absolute local file URI for the cover image shown in WPF.</summary>
-    public string? CoverUrl
-    {
-        get
-        {
-            if (string.IsNullOrWhiteSpace(CoverImagePath))
-                return null;
-            try
-            {
-                var full = System.IO.Path.GetFullPath(CoverImagePath.Trim());
-                return System.IO.File.Exists(full) ? new Uri(full).AbsoluteUri : null;
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-            catch (NotSupportedException)
-            {
-                return null;
-            }
-        }
-    }
+    [JsonIgnore]
+    public string? CoverUrl { get; set; }
 }

@@ -29,8 +29,12 @@
                         BorderThickness="1"
                         CornerRadius="4"
                         Background="White"
-                        ClipToBounds="True">
-                    <Image Source="{Binding CoverUrl}"
+                        ClipToBounds="True"
+                        Cursor="Hand"
+                        ToolTip="Click to preview original size"
+                        MouseLeftButtonUp="CoverBorder_OnMouseLeftButtonUp">
+                    <Image x:Name="CoverImage"
+                           Source="{Binding CoverUrl}"
                            Stretch="UniformToFill" />
                 </Border>
 
@@ -74,9 +78,8 @@
                     </Grid>
 
                     <TextBlock Text="Category" Style="{StaticResource FieldLabelStyle}" />
-                    <ComboBox ItemsSource="{Binding Categories, Mode=OneTime}"
-                              SelectedItem="{Binding Category}"
-                              Padding="8,6" FontSize="13" />
+                    <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="8,6" FontSize="13" />
 
                     <TextBlock Text="Subcategory" Style="{StaticResource FieldLabelStyle}" />
                     <TextBox Text="{Binding Subcategory, UpdateSourceTrigger=PropertyChanged}"

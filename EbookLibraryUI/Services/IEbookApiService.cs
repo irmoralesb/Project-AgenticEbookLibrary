@@ -13,6 +13,7 @@ public interface IEbookApiService
         CancellationToken ct = default);
 
     Task<EbookDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<string?> DownloadCoverToTempAsync(Guid id, CancellationToken ct = default);
     Task<EbookDto?> UpdateAsync(Guid id, EbookUpdateDto dto, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<IngestStartResponse> StartIngestAsync(IngestRequestDto request, CancellationToken ct = default);
