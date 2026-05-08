@@ -15,6 +15,7 @@ public interface IEbookApiService
     Task<EbookDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<string?> DownloadCoverToTempAsync(Guid id, CancellationToken ct = default);
     Task<EbookDto?> UpdateAsync(Guid id, EbookUpdateDto dto, CancellationToken ct = default);
+    Task<ReextractFieldResponseDto> ReextractFieldAsync(Guid id, ReextractFieldRequestDto dto, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<IngestStartResponse> StartIngestAsync(IngestRequestDto request, CancellationToken ct = default);
     IAsyncEnumerable<IngestProgressEvent> StreamIngestAsync(string jobId, CancellationToken ct);

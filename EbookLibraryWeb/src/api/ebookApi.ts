@@ -9,6 +9,24 @@ import type {
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
+export type ReextractDirection = 'front_to_back' | 'back_to_front';
+export type ReextractFieldName = 'authors' | 'isbn' | 'publisher' | 'year';
+
+export interface ReextractFieldRequestDto {
+  field: ReextractFieldName;
+  page_range: string;
+  direction: ReextractDirection;
+}
+
+export interface ReextractFieldResponseDto {
+  field: ReextractFieldName;
+  value: string | string[] | number | null;
+  used_start_page: number;
+  used_end_page: number;
+  direction: ReextractDirection;
+  message: string;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
@@ -42,6 +60,16 @@ export async function updateEbook(
 
 export async function deleteEbook(id: string): Promise<void> {
   return request<void>(`/api/ebooks/${id}`, { method: 'DELETE' });
+}
+
+export async function reextractField(
+  id: string,
+  dto: ReextractFieldRequestDto
+): Promise<ReextractFieldResponseDto> {
+  return request<ReextractFieldResponseDto>(`/api/ebooks/${id}/reextract-field`, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
 }
 
 export async function startIngest(

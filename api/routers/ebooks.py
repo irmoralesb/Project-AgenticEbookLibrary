@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
 from api.dependencies import get_repository
-from api.schemas import EbookResponse, EbookUpdateRequest
+from api.schemas import (
+    EbookResponse,
+    EbookUpdateRequest,
+    ReextractFieldRequest,
+    ReextractFieldResponse,
+)
+from api.services.field_reextract_service import reextract_field_for_ebook
 from persistence.repositories.ebook_repository import EbookRepository
 
 router = APIRouter(prefix="/api/ebooks", tags=["ebooks"])
@@ -78,6 +84,32 @@ def update_ebook(
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ebook not found.")
     return EbookResponse.model_validate(row)
+
+
+@router.post("/{ebook_id}/reextract-field", response_model=ReextractFieldResponse)
+def reextract_field(
+    ebook_id: uuid.UUID,
+    body: ReextractFieldRequest,
+    repo: EbookRepository = Depends(get_repository),
+) -> ReextractFieldResponse:
+    row = repo.get_by_id(ebook_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ebook not found.")
+
+    result = reextract_field_for_ebook(
+        ebook=row,
+        field=body.field,
+        page_range=body.page_range,
+        direction=body.direction,
+    )
+    return ReextractFieldResponse(
+        field=result.field,
+        value=result.value,
+        used_start_page=result.used_start_page,
+        used_end_page=result.used_end_page,
+        direction=result.direction,
+        message=result.message,
+    )
 
 
 @router.delete("/{ebook_id}", status_code=status.HTTP_204_NO_CONTENT)

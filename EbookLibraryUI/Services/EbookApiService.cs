@@ -111,6 +111,17 @@ public class EbookApiService : IEbookApiService
         return await response.Content.ReadFromJsonAsync<EbookDto>(_jsonOptions, ct);
     }
 
+    public async Task<ReextractFieldResponseDto> ReextractFieldAsync(
+        Guid id,
+        ReextractFieldRequestDto dto,
+        CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync($"api/ebooks/{id}/reextract-field", dto, _jsonOptions, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ReextractFieldResponseDto>(_jsonOptions, ct)
+            ?? throw new InvalidOperationException("Empty response from reextract-field.");
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var response = await _http.DeleteAsync($"api/ebooks/{id}", ct);

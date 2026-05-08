@@ -5,7 +5,7 @@ can evolve independently of the internal EbookMetadata / EbookORM types.
 """
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -78,3 +78,24 @@ class IngestStartResponse(BaseModel):
 
 class FolderPickerResponse(BaseModel):
     path: str | None
+
+
+ReextractFieldName = Literal["authors", "isbn", "publisher", "year"]
+ReextractDirection = Literal["front_to_back", "back_to_front"]
+
+
+class ReextractFieldRequest(BaseModel):
+    field: ReextractFieldName
+    page_range: str = Field(
+        description="1-based inclusive page range in the format 'start-end', e.g. '5-10'."
+    )
+    direction: ReextractDirection
+
+
+class ReextractFieldResponse(BaseModel):
+    field: ReextractFieldName
+    value: str | list[str] | int | None
+    used_start_page: int
+    used_end_page: int
+    direction: ReextractDirection
+    message: str

@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EbookLibraryUI.Models;
 using EbookLibraryUI.Services;
+using System.Text.RegularExpressions;
+using System.Text.Json;
 
 namespace EbookLibraryUI.ViewModels;
 
@@ -25,6 +27,11 @@ public partial class EbookDetailViewModel : ObservableObject
     [ObservableProperty] private bool _hasErrors;
     [ObservableProperty] private string? _coverUrl;
     [ObservableProperty] private string _statusMessage = string.Empty;
+    [ObservableProperty] private bool _isFindAgainDialogOpen;
+    [ObservableProperty] private bool _isReextracting;
+    [ObservableProperty] private string _findAgainField = "authors";
+    [ObservableProperty] private string _findAgainPageRange = "1-5";
+    [ObservableProperty] private string _findAgainDirection = "front_to_back";
 
     public event Action? SaveCompleted;
     public event Action? CancelRequested;
@@ -77,6 +84,57 @@ public partial class EbookDetailViewModel : ObservableObject
         CancelRequested?.Invoke();
     }
 
+    [RelayCommand]
+    private void OpenFindAgain(string field)
+    {
+        FindAgainField = string.IsNullOrWhiteSpace(field) ? "authors" : field;
+        FindAgainPageRange = "1-5";
+        FindAgainDirection = "front_to_back";
+        IsFindAgainDialogOpen = true;
+        StatusMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private void CloseFindAgain()
+    {
+        if (IsReextracting)
+            return;
+        IsFindAgainDialogOpen = false;
+    }
+
+    [RelayCommand]
+    private async Task RunFindAgainAsync()
+    {
+        if (!Regex.IsMatch(FindAgainPageRange ?? string.Empty, @"^\s*\d+\s*-\s*\d+\s*$"))
+        {
+            StatusMessage = "Find again failed: page range must follow start-end (example: 5-10).";
+            return;
+        }
+
+        IsReextracting = true;
+        StatusMessage = "Finding value...";
+        try
+        {
+            var result = await _api.ReextractFieldAsync(_ebookId, new ReextractFieldRequestDto
+            {
+                Field = FindAgainField,
+                PageRange = FindAgainPageRange ?? "1-5",
+                Direction = FindAgainDirection,
+            });
+            ApplyReextractResult(result);
+            StatusMessage = string.IsNullOrWhiteSpace(result.Message) ? "Find again completed." : result.Message;
+            IsFindAgainDialogOpen = false;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Find again failed: {ex.Message}";
+        }
+        finally
+        {
+            IsReextracting = false;
+        }
+    }
+
     private EbookUpdateDto BuildUpdateDto()
     {
         var authors = AuthorsText?
@@ -103,5 +161,73 @@ public partial class EbookDetailViewModel : ObservableObject
             PageCount = int.TryParse(PageCount, out var pc) ? pc : null,
             HasErrors = HasErrors,
         };
+    }
+
+    private void ApplyReextractResult(ReextractFieldResponseDto result)
+    {
+        switch (result.Field)
+        {
+            case "authors":
+                AuthorsText = ParseAuthorsValue(result.Value);
+                break;
+            case "isbn":
+                Isbn = ParseSingleValue(result.Value);
+                break;
+            case "publisher":
+                Publisher = ParseSingleValue(result.Value);
+                break;
+            case "year":
+                Year = ParseYearValue(result.Value);
+                break;
+        }
+    }
+
+    private static string? ParseYearValue(object? value)
+    {
+        if (value is null)
+            return null;
+        if (value is int yearInt)
+            return yearInt.ToString();
+        if (value is JsonElement json)
+        {
+            if (json.ValueKind == JsonValueKind.Number && json.TryGetInt32(out var y))
+                return y.ToString();
+            if (json.ValueKind == JsonValueKind.String)
+                return json.GetString();
+            return json.ToString();
+        }
+        if (value is string s)
+            return s;
+        return value.ToString();
+    }
+
+    private static string? ParseSingleValue(object? value)
+    {
+        if (value is null)
+            return null;
+        if (value is string stringValue)
+            return stringValue;
+        if (value is JsonElement json && json.ValueKind == JsonValueKind.String)
+            return json.GetString();
+        return value.ToString();
+    }
+
+    private static string? ParseAuthorsValue(object? value)
+    {
+        if (value is null)
+            return null;
+        if (value is JsonElement json && json.ValueKind == JsonValueKind.Array)
+        {
+            var authors = new List<string>();
+            foreach (var item in json.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(item.GetString()))
+                    authors.Add(item.GetString()!);
+            }
+            return authors.Count > 0 ? string.Join(", ", authors) : null;
+        }
+        if (value is string single)
+            return single;
+        return value.ToString();
     }
 }

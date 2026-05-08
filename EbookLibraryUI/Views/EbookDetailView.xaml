@@ -53,26 +53,92 @@
                              Padding="8,6" FontSize="13" />
 
                     <TextBlock Text="Authors (comma-separated)" Style="{StaticResource FieldLabelStyle}" />
-                    <TextBox Text="{Binding AuthorsText, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="8,6" FontSize="13" />
-
-                    <!-- ISBN + Year row -->
-                    <Grid Margin="0,0,0,0">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding AuthorsText, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="8,6" FontSize="13" />
+                        <Button Grid.Column="1"
+                                Content="Find again"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding OpenFindAgainCommand}"
+                                CommandParameter="authors" />
+                    </Grid>
+
+                    <!-- ISBN, Year, Language, Edition, Page count — single row -->
+                    <Grid Margin="0,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="176" MaxWidth="268" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" MinWidth="148" MaxWidth="220" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" MinWidth="64" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" MinWidth="64" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" MinWidth="88" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="ISBN" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding Isbn, UpdateSourceTrigger=PropertyChanged}"
-                                     Padding="8,6" FontSize="13" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="148" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding Isbn, UpdateSourceTrigger=PropertyChanged}"
+                                         MaxLength="20"
+                                         Padding="8,6" FontSize="13" />
+                                <Button Grid.Column="1"
+                                        Content="Find again"
+                                        Margin="8,0,0,0"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding OpenFindAgainCommand}"
+                                        CommandParameter="isbn" />
+                            </Grid>
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="Year" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="76" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
+                                         MinWidth="72"
+                                         Padding="8,6" FontSize="13" />
+                                <Button Grid.Column="1"
+                                        Content="Find again"
+                                        Margin="8,0,0,0"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding OpenFindAgainCommand}"
+                                        CommandParameter="year" />
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Language" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Language, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="6">
+                            <TextBlock Text="Edition" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding Edition, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6" FontSize="13" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="8">
+                            <TextBlock Text="Page count" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding PageCount, UpdateSourceTrigger=PropertyChanged}"
+                                     MinWidth="80"
                                      Padding="8,6" FontSize="13" />
                         </StackPanel>
                     </Grid>
@@ -96,46 +162,21 @@
                              AcceptsReturn="False"
                              ToolTip="Example: C#, SOLID Principles, Design Patterns" />
 
-                    <!-- Publisher + Edition row -->
+                    <TextBlock Text="Publisher" Style="{StaticResource FieldLabelStyle}" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Publisher" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding Publisher, UpdateSourceTrigger=PropertyChanged}"
-                                     Padding="8,6" FontSize="13" />
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Edition" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding Edition, UpdateSourceTrigger=PropertyChanged}"
-                                     Padding="8,6" FontSize="13" />
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Language + Page count row -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="120" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="120" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Language" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding Language, UpdateSourceTrigger=PropertyChanged}"
-                                     Padding="8,6" FontSize="13" />
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Page count" Style="{StaticResource FieldLabelStyle}" />
-                            <TextBox Text="{Binding PageCount, UpdateSourceTrigger=PropertyChanged}"
-                                     Padding="8,6" FontSize="13" />
-                        </StackPanel>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Publisher, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="8,6" FontSize="13" />
+                        <Button Grid.Column="1"
+                                Content="Find again"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding OpenFindAgainCommand}"
+                                CommandParameter="publisher" />
                     </Grid>
 
                     <TextBlock Text="Description" Style="{StaticResource FieldLabelStyle}" />
@@ -160,6 +201,48 @@
                     <TextBlock Text="{Binding StatusMessage}"
                                Foreground="{StaticResource SubtleTextBrush}"
                                Margin="0,8,0,16" />
+
+                    <Border Background="#AA000000"
+                            Visibility="{Binding IsFindAgainDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="360">
+                            <Border Background="White"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="14">
+                                <StackPanel>
+                                    <TextBlock Text="Find again" FontSize="16" FontWeight="SemiBold" />
+                                    <TextBlock Text="Page range (1-based inclusive)"
+                                               Style="{StaticResource FieldLabelStyle}" />
+                                    <TextBox Text="{Binding FindAgainPageRange, UpdateSourceTrigger=PropertyChanged}"
+                                             Padding="8,6"
+                                             FontSize="13" />
+
+                                    <TextBlock Text="Direction" Style="{StaticResource FieldLabelStyle}" />
+                                    <ComboBox SelectedValue="{Binding FindAgainDirection, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="Tag">
+                                        <ComboBoxItem Content="Front to Back" Tag="front_to_back" />
+                                        <ComboBoxItem Content="Back to Front" Tag="back_to_front" />
+                                    </ComboBox>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                        <Button Content="Run"
+                                                Style="{StaticResource PrimaryButtonStyle}"
+                                                Command="{Binding RunFindAgainCommand}" />
+                                        <Button Content="Cancel"
+                                                Margin="8,0,0,0"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                Command="{Binding CloseFindAgainCommand}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="Running..."
+                                               Margin="0,8,0,0"
+                                               Foreground="{StaticResource PrimaryBrush}"
+                                               Visibility="{Binding IsReextracting, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
 
                 </StackPanel>
             </ScrollViewer>
