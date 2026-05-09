@@ -22,6 +22,13 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
+            <Grid Grid.ColumnSpan="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
             <!-- Cover + error flag -->
             <StackPanel Grid.Column="0">
                 <Border Width="130" Height="182"
@@ -209,50 +216,57 @@
                                Foreground="{StaticResource SubtleTextBrush}"
                                Margin="0,8,0,16" />
 
-                    <Border Background="#AA000000"
-                            Visibility="{Binding IsFindAgainDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="360">
-                            <Border Background="White"
-                                    BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Padding="14">
-                                <StackPanel>
-                                    <TextBlock Text="Find again" FontSize="16" FontWeight="SemiBold" />
-                                    <TextBlock Text="Page range (1-based inclusive)"
-                                               Style="{StaticResource FieldLabelStyle}" />
-                                    <TextBox Text="{Binding FindAgainPageRange, UpdateSourceTrigger=PropertyChanged}"
-                                             Padding="8,6"
-                                             FontSize="13" />
-
-                                    <TextBlock Text="Direction" Style="{StaticResource FieldLabelStyle}" />
-                                    <ComboBox SelectedValue="{Binding FindAgainDirection, UpdateSourceTrigger=PropertyChanged}"
-                                              SelectedValuePath="Tag">
-                                        <ComboBoxItem Content="Front to Back" Tag="front_to_back" />
-                                        <ComboBoxItem Content="Back to Front" Tag="back_to_front" />
-                                    </ComboBox>
-
-                                    <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                                        <Button Content="Run"
-                                                Style="{StaticResource PrimaryButtonStyle}"
-                                                Command="{Binding RunFindAgainCommand}" />
-                                        <Button Content="Cancel"
-                                                Margin="8,0,0,0"
-                                                Style="{StaticResource SecondaryButtonStyle}"
-                                                Command="{Binding CloseFindAgainCommand}" />
-                                    </StackPanel>
-
-                                    <TextBlock Text="Running..."
-                                               Margin="0,8,0,0"
-                                               Foreground="{StaticResource PrimaryBrush}"
-                                               Visibility="{Binding IsReextracting, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Border>
-
                 </StackPanel>
             </ScrollViewer>
+            </Grid>
+
+            <!-- Find again: floating overlay (not in scroll; covers full detail area) -->
+            <Border Grid.ColumnSpan="3"
+                    Panel.ZIndex="1"
+                    Background="#AA000000"
+                    Visibility="{Binding IsFindAgainDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <Border HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Width="360"
+                            Background="White"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="14">
+                        <StackPanel>
+                            <TextBlock Text="Find again" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Text="Page range (1-based inclusive)"
+                                       Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding FindAgainPageRange, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="8,6"
+                                     FontSize="13" />
+
+                            <TextBlock Text="Direction" Style="{StaticResource FieldLabelStyle}" />
+                            <ComboBox SelectedValue="{Binding FindAgainDirection, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Front to Back" Tag="front_to_back" />
+                                <ComboBoxItem Content="Back to Front" Tag="back_to_front" />
+                            </ComboBox>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                <Button Content="Run"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding RunFindAgainCommand}" />
+                                <Button Content="Cancel"
+                                        Margin="8,0,0,0"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding CloseFindAgainCommand}" />
+                            </StackPanel>
+
+                            <TextBlock Text="Running..."
+                                       Margin="0,8,0,0"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       Visibility="{Binding IsReextracting, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Page>
