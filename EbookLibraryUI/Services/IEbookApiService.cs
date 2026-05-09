@@ -20,4 +20,7 @@ public interface IEbookApiService
     Task<IngestStartResponse> StartIngestAsync(IngestRequestDto request, CancellationToken ct = default);
     IAsyncEnumerable<IngestProgressEvent> StreamIngestAsync(string jobId, CancellationToken ct);
     Task<string?> PickFolderAsync(CancellationToken ct = default);
+
+    /// <summary>Adds a publisher name to the regex catalog. Duplicate names are treated as success.</summary>
+    Task<KnownPublisherCatalogResult> AddKnownPublisherAsync(string name, CancellationToken ct = default);
 }

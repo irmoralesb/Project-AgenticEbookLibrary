@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from api.dependencies import get_repository
 from api.main import app
+from api.routers import ebooks as ebooks_router
 from api.services import field_reextract_service
 
 
@@ -90,7 +91,7 @@ def test_reextract_endpoint_returns_preview_without_persist(monkeypatch: pytest.
     app.dependency_overrides[get_repository] = lambda: repo
 
     monkeypatch.setattr(
-        field_reextract_service,
+        ebooks_router,
         "reextract_field_for_ebook",
         lambda **_kwargs: field_reextract_service.ReextractResult(
             field="authors",
@@ -130,7 +131,7 @@ def test_reextract_endpoint_year_returns_integer_value(monkeypatch: pytest.Monke
     app.dependency_overrides[get_repository] = lambda: repo
 
     monkeypatch.setattr(
-        field_reextract_service,
+        ebooks_router,
         "reextract_field_for_ebook",
         lambda **_kwargs: field_reextract_service.ReextractResult(
             field="year",

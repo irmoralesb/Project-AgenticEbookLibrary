@@ -16,6 +16,7 @@ if str(_root) not in sys.path:
 load_dotenv()
 
 from persistence.orm.ebook_orm import Base  # noqa: E402
+from persistence.orm.known_publisher_orm import KnownPublisherORM  # noqa: E402, F401
 
 config = context.config
 

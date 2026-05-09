@@ -26,6 +26,20 @@ class QueryAuthors(BaseModel):
     )
 
 
+class QueryPublisher(BaseModel):
+    """Publisher imprint extracted by the LLM from colophon-style early pages."""
+
+    publisher: str | None = Field(
+        default=None,
+        max_length=60,
+        description=(
+            "The publishing imprint or publishing house exactly as evidenced in the text "
+            '(e.g. after "Published by", on the copyright page, or in the colophon). '
+            "At most 60 characters. Use null when no publisher is clearly stated or you are unsure."
+        ),
+    )
+
+
 class QueryCategoryMetadata(BaseModel):
     """Category and subcategory extracted by the LLM from the first pages of an ebook."""
 

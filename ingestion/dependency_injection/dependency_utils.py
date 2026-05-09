@@ -24,6 +24,7 @@ from extractors.tools.isbn_extractor import IsbnExtractor
 from extractors.tools.language_extractor import LanguageExtractor
 from extractors.tools.page_count_extractor import PageCounterExtractor
 from extractors.tools.publisher_extractor import PublisherExtractor
+from persistence.publisher_catalog import load_known_publisher_names_from_db
 from extractors.tools.title_extractor import TitleExtractor
 from extractors.tools.year_extractor import YearExtractor
 from llm_models.basic_models import BasicLocalModel
@@ -67,7 +68,10 @@ def get_year_extractor() -> YearExtractor:
 
 def get_publisher_extractor() -> PublisherExtractor:
     """Provide the Publisher Extractor instance."""
-    return PublisherExtractor()
+    return PublisherExtractor(
+        get_basic_llm_model(),
+        catalog_name_loader=load_known_publisher_names_from_db,
+    )
 
 
 def get_authors_extractor() -> AuthorsExtractor:

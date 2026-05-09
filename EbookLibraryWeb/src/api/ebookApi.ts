@@ -72,6 +72,40 @@ export async function reextractField(
   });
 }
 
+export interface KnownPublisherDto {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export type CreateKnownPublisherResult =
+  | { kind: 'created'; publisher: KnownPublisherDto }
+  | { kind: 'duplicate' };
+
+/** Adds a publisher name to the regex catalog (tier before LLM). */
+export async function createKnownPublisher(
+  name: string
+): Promise<CreateKnownPublisherResult> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Enter a publisher name first.');
+  }
+  const res = await fetch(`${BASE}/api/publishers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: trimmed }),
+  });
+  if (res.status === 409) {
+    return { kind: 'duplicate' };
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  const publisher = (await res.json()) as KnownPublisherDto;
+  return { kind: 'created', publisher };
+}
+
 export async function startIngest(
   req: IngestRequestDto
 ): Promise<IngestStartResponse> {

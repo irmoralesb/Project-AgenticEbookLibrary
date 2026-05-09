@@ -5,6 +5,7 @@ can evolve independently of the internal EbookMetadata / EbookORM types.
 """
 
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
@@ -78,6 +79,22 @@ class IngestStartResponse(BaseModel):
 
 class FolderPickerResponse(BaseModel):
     path: str | None
+
+
+class KnownPublisherCreate(BaseModel):
+    """Body for POST /api/publishers."""
+
+    name: str = Field(min_length=1, max_length=60)
+
+
+class KnownPublisherResponse(BaseModel):
+    """One row from the publisher catalog."""
+
+    id: uuid.UUID
+    name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 ReextractFieldName = Literal["authors", "isbn", "publisher", "year"]

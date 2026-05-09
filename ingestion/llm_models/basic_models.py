@@ -3,7 +3,12 @@ from langchain_core.tools import structured
 from langchain_ollama.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import content
-from extractors.models.models import QueryAuthors, QueryCategoryMetadata, QueryTitleWithEdition
+from extractors.models.models import (
+    QueryAuthors,
+    QueryCategoryMetadata,
+    QueryPublisher,
+    QueryTitleWithEdition,
+)
 
 
 class BasicLocalModel():
@@ -96,6 +101,54 @@ class BasicLocalModel():
 
         ai_message = chain.invoke({"book_extract": book_extract})
         return ai_message
+
+    def extract_publisher(self, book_extract: str) -> QueryPublisher:
+        system_message = dedent(
+            """
+            You extract the publisher (publishing imprint or publishing house) for a book from raw
+            text taken from its early pages — copyright pages, title verso, colophon, or similar.
+
+            Rules:
+            1) Output must be a single valid JSON object with exactly one field:
+               - "publisher": string or null
+            2) Do not include markdown fences, comments, or extra text.
+            3) Prefer the exact imprint wording as printed in the excerpt when there is clear evidence:
+               phrases like "Published by …", copyright lines naming the publisher, or "… Press"
+               on the imprint line count. Do not paraphrase when a literal name is visible.
+            4) The publisher is the entity that publishes the book, not the author, not only a
+               printer, and typically not an ebook retailer or file host unless it is explicitly
+               named as the publisher of this edition.
+            5) Do not confuse a book series title, slogan, or software product name with the
+               publisher. If ambiguous, use null.
+            6) "publisher" must be at most 60 characters; truncate only if necessary to stay within
+               the limit while keeping the imprint recognizable.
+            7) If no publisher is clearly stated in the text, or you would be guessing, set
+               "publisher" to null. Do not invent names.
+            """
+        ).strip()
+
+        human_message = dedent(
+            """
+            Below is raw text from the early part of the book. Extract the publisher as instructed.
+
+            -----BEGIN PDF TEXT-----
+            {book_extract}
+            -----END PDF TEXT-----
+            """
+        ).strip()
+
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_message),
+                ("human", human_message),
+            ]
+        )
+
+        structured_output = self.llm.with_structured_output(
+            QueryPublisher, method="json_schema"
+        )
+        chain = prompt | structured_output
+        return chain.invoke({"book_extract": book_extract})
 
     def extract_description(self, text: str) -> str | None:
         system_message = dedent("""

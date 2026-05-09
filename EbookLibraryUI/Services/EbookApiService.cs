@@ -202,6 +202,39 @@ public class EbookApiService : IEbookApiService
         }
     }
 
+    public async Task<KnownPublisherCatalogResult> AddKnownPublisherAsync(
+        string name,
+        CancellationToken ct = default)
+    {
+        var trimmed = name.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return new KnownPublisherCatalogResult(
+                KnownPublisherCatalogResultKind.ValidationError,
+                "Enter a publisher name first.");
+        }
+
+        using var response = await _http.PostAsJsonAsync(
+            "api/publishers",
+            new KnownPublisherCreateDto(trimmed),
+            _jsonOptions,
+            ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            return new KnownPublisherCatalogResult(
+                KnownPublisherCatalogResultKind.AlreadyExists,
+                "That publisher is already in the catalog.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        var row = await response.Content.ReadFromJsonAsync<KnownPublisherResponseDto>(_jsonOptions, ct);
+        var displayName = row?.Name ?? trimmed;
+        return new KnownPublisherCatalogResult(
+            KnownPublisherCatalogResultKind.Created,
+            $"Added \"{displayName}\" to the publisher catalog.");
+    }
+
     private sealed class FolderPickerResponse
     {
         public string? Path { get; set; }

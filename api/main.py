@@ -15,7 +15,7 @@ if str(_ingestion_root) not in sys.path:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import ebooks, ingest, system
+from api.routers import ebooks, ingest, publishers, system
 
 app = FastAPI(
     title="Agentic Ebook Library API",
@@ -33,6 +33,7 @@ app.add_middleware(
 
 app.include_router(ebooks.router)
 app.include_router(ingest.router)
+app.include_router(publishers.router)
 app.include_router(system.router)
 
 

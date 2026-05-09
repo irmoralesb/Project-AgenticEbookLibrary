@@ -2,7 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from extractors.models.models import QueryAuthors, QueryCategoryMetadata, QueryTitleWithEdition
+from extractors.models.models import (
+    QueryAuthors,
+    QueryCategoryMetadata,
+    QueryPublisher,
+    QueryTitleWithEdition,
+)
 from extractors.tools.authors_extractor import AuthorsExtractor
 from extractors.tools.category_extractor import CategoryExtractor
 from extractors.tools.description_extractor import DescriptionExtractor
@@ -101,39 +106,100 @@ def test_year_extractor_prefers_copyright_over_bare_year() -> None:
 # PublisherExtractor
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("text,expected", [
-    ("Published by O'Reilly Media, Inc.", "O'Reilly Media"),
-    ("A Packt Publishing book", "Packt Publishing"),
-    ("Manning Publications Co.", "Manning Publications"),
-    ("Apress, a Springer company", "Apress"),
-    ("No known publisher here", None),
-    ("microsoft press edition", "Microsoft Press"),
-])
-def test_publisher_extractor_extracts_canonical_publisher(text: str, expected: str | None) -> None:
-    extractor = PublisherExtractor()
-    assert extractor.extract_publisher_from_text([text]) == expected
+def test_publisher_extractor_catalog_hit_skips_llm() -> None:
+    llm = Mock()
+    extractor = PublisherExtractor(
+        llm,
+        catalog_name_loader=lambda: ["No Starch Press", "Packt"],
+    )
+
+    result = extractor.extract_publisher_from_text(
+        ["Copyright © 2024 No Starch Press, Inc."]
+    )
+
+    llm.extract_publisher.assert_not_called()
+    assert result == "No Starch Press"
 
 
-def test_publisher_extractor_returns_canonical_casing() -> None:
-    extractor = PublisherExtractor()
-    result = extractor.extract_publisher_from_text(["published by o'reilly media"])
-    assert result == "O'Reilly Media"
+def test_publisher_extractor_catalog_prefers_longer_name() -> None:
+    llm = Mock()
+    extractor = PublisherExtractor(
+        llm,
+        catalog_name_loader=lambda: ["Addison-Wesley", "Addison-Wesley Professional"],
+    )
 
-
-def test_publisher_extractor_matches_curly_apostrophe_from_pdf() -> None:
-    # PDF text frequently uses the right single quotation mark (U+2019) instead of ASCII apostrophe.
-    extractor = PublisherExtractor()
-    result = extractor.extract_publisher_from_text(["Published by O\u2019Reilly Media, Inc."])
-    assert result == "O'Reilly Media"
-
-
-def test_publisher_extractor_prefers_longer_match() -> None:
-    # "Addison-Wesley Professional" must beat "Addison-Wesley".
-    extractor = PublisherExtractor()
     result = extractor.extract_publisher_from_text(
         ["Addison-Wesley Professional, a Pearson imprint"]
     )
+
+    llm.extract_publisher.assert_not_called()
     assert result == "Addison-Wesley Professional"
+
+
+def test_publisher_extractor_delegates_to_llm_when_catalog_empty() -> None:
+    llm = Mock()
+    llm.extract_publisher.return_value = QueryPublisher(publisher="No Starch Press")
+    extractor = PublisherExtractor(llm, catalog_name_loader=lambda: [])
+
+    result = extractor.extract_publisher_from_text(["Copyright © 2024 No Starch Press"])
+
+    llm.extract_publisher.assert_called_once_with("Copyright © 2024 No Starch Press")
+    assert result == "No Starch Press"
+
+
+def test_publisher_extractor_delegates_to_llm_when_no_catalog_loader() -> None:
+    llm = Mock()
+    llm.extract_publisher.return_value = QueryPublisher(publisher="No Starch Press")
+    extractor = PublisherExtractor(llm)
+
+    result = extractor.extract_publisher_from_text(["Copyright © 2024 No Starch Press"])
+
+    llm.extract_publisher.assert_called_once_with("Copyright © 2024 No Starch Press")
+    assert result == "No Starch Press"
+
+
+def test_publisher_extractor_returns_none_when_llm_returns_null() -> None:
+    llm = Mock()
+    llm.extract_publisher.return_value = QueryPublisher(publisher=None)
+    extractor = PublisherExtractor(llm, catalog_name_loader=lambda: [])
+
+    assert extractor.extract_publisher_from_text(["no imprint here"]) is None
+
+
+def test_publisher_extractor_strips_whitespace_and_truncates_to_60_chars() -> None:
+    llm = Mock()
+    # Bypass Pydantic max_length — model may still return overlong strings from the LLM runtime.
+    long_val = Mock()
+    long_val.publisher = f" {'x' * 70} "
+    llm.extract_publisher.return_value = long_val
+    extractor = PublisherExtractor(llm, catalog_name_loader=lambda: [])
+
+    result = extractor.extract_publisher_from_text(["text"])
+    assert result == "x" * 60
+
+
+def test_publisher_extractor_tries_later_ranges_after_null_from_llm() -> None:
+    llm = Mock()
+    llm.extract_publisher.side_effect = [
+        QueryPublisher(publisher=None),
+        QueryPublisher(publisher="  Tiny Owl Books  "),
+    ]
+    extractor = PublisherExtractor(llm, catalog_name_loader=lambda: [])
+
+    assert (
+        extractor.extract_publisher_from_text(["first excerpt", "second excerpt"])
+        == "Tiny Owl Books"
+    )
+    assert llm.extract_publisher.call_count == 2
+
+
+def test_publisher_extractor_skips_whitespace_only_ranges_without_calling_llm() -> None:
+    llm = Mock()
+    llm.extract_publisher.return_value = QueryPublisher(publisher="Acme Publishing")
+    extractor = PublisherExtractor(llm, catalog_name_loader=lambda: [])
+
+    assert extractor.extract_publisher_from_text(["  \n  ", "\t", "copyright page"]) == "Acme Publishing"
+    llm.extract_publisher.assert_called_once_with("copyright page")
 
 
 # ---------------------------------------------------------------------------

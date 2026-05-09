@@ -6,6 +6,7 @@ import {
   getEbook,
   reextractField,
   updateEbook,
+  createKnownPublisher,
   type ReextractDirection,
   type ReextractFieldName,
 } from '../api/ebookApi';
@@ -160,6 +161,20 @@ export default function EbookDetailView() {
     },
     onError: (err) => {
       setReextractStatus(`Find again failed: ${(err as Error).message}`);
+    },
+  });
+
+  const addCatalogMutation = useMutation({
+    mutationFn: () => createKnownPublisher(form.publisher),
+    onSuccess: (result) => {
+      if (result.kind === 'duplicate') {
+        setStatus('That publisher is already in the catalog.');
+      } else {
+        setStatus(`Added "${result.publisher.name}" to the publisher catalog.`);
+      }
+    },
+    onError: (err) => {
+      setStatus(`Error: ${(err as Error).message}`);
     },
   });
 
@@ -417,13 +432,30 @@ export default function EbookDetailView() {
 
                   {/* Publisher */}
                   <Field label="Publisher">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="text"
                         value={form.publisher}
                         onChange={(e) => handleChange('publisher', e.target.value)}
-                        className={inputCls}
+                        className={`${inputCls} min-w-0 flex-1 basis-[12rem]`}
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatus('');
+                          addCatalogMutation.mutate();
+                        }}
+                        disabled={
+                          !form.publisher.trim() || addCatalogMutation.isPending
+                        }
+                        title="Save this imprint to the library catalog for faster matching on new books"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {addCatalogMutation.isPending ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : null}
+                        Add to catalog
+                      </button>
                       <FindAgainButton onClick={() => openFindAgain('publisher')} />
                     </div>
                   </Field>

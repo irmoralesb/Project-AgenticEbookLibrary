@@ -83,6 +83,54 @@ public partial class LibraryViewModel : ObservableObject
     /// <summary>Called from the view when the user scrolls near the end of the list.</summary>
     public Task TryLoadNextPageIfNeededAsync() => AppendNextPageAsync();
 
+    /// <summary>Reloads library from API (awaitable), then rebinds the saved row so grid columns refresh cleanly.</summary>
+    public async Task RefreshLibraryAfterSavedAsync(EbookDto? updatedFromPut)
+    {
+        await LoadBooksCommand.ExecuteAsync(null);
+        if (updatedFromPut is not null)
+            await RebindMatchingRowFromPutAsync(updatedFromPut);
+    }
+
+    private async Task RebindMatchingRowFromPutAsync(EbookDto updatedFromPut)
+    {
+        for (var i = 0; i < Books.Count; i++)
+        {
+            if (Books[i].Id != updatedFromPut.Id)
+                continue;
+            var merged = CloneFromServerDto(updatedFromPut);
+            merged.CoverUrl = await _api.DownloadCoverToTempAsync(updatedFromPut.Id);
+            Books.RemoveAt(i);
+            Books.Insert(i, merged);
+            if (SelectedBook?.Id == updatedFromPut.Id)
+                SelectedBook = merged;
+            break;
+        }
+    }
+
+    private static EbookDto CloneFromServerDto(EbookDto src) => new()
+    {
+        Id = src.Id,
+        Title = src.Title,
+        Isbn = src.Isbn,
+        Authors = src.Authors.Count > 0 ? [..src.Authors] : [],
+        Year = src.Year,
+        Description = src.Description,
+        Category = src.Category,
+        Subcategory = src.Subcategory,
+        Tags = src.Tags.Count > 0 ? [..src.Tags] : [],
+        Publisher = src.Publisher,
+        Edition = src.Edition,
+        Language = src.Language,
+        PageCount = src.PageCount,
+        FileName = src.FileName,
+        FilePath = src.FilePath,
+        CoverImagePath = src.CoverImagePath,
+        CoverImageMimeType = src.CoverImageMimeType,
+        HasErrors = src.HasErrors,
+        IsMetadataStored = src.IsMetadataStored,
+        IsEmbededDataStored = src.IsEmbededDataStored,
+    };
+
     private async Task AppendNextPageAsync()
     {
         if (!HasMorePages || IsLoadingMore || IsLoading)

@@ -33,7 +33,8 @@ public partial class EbookDetailViewModel : ObservableObject
     [ObservableProperty] private string _findAgainPageRange = "1-5";
     [ObservableProperty] private string _findAgainDirection = "front_to_back";
 
-    public event Action? SaveCompleted;
+    /// <summary>Returned <see cref="EbookDto"/> is the PUT response (may be null). Handlers run on the calling sync context.</summary>
+    public event Func<EbookDto?, Task>? SaveCompletedAsync;
     public event Action? CancelRequested;
 
     public EbookDetailViewModel(IEbookApiService api)
@@ -68,9 +69,9 @@ public partial class EbookDetailViewModel : ObservableObject
         try
         {
             var dto = BuildUpdateDto();
-            await _api.UpdateAsync(_ebookId, dto);
+            var updated = await _api.UpdateAsync(_ebookId, dto);
             StatusMessage = "Saved successfully.";
-            SaveCompleted?.Invoke();
+            await InvokeSaveCompletedAsync(updated);
         }
         catch (Exception ex)
         {
@@ -82,6 +83,18 @@ public partial class EbookDetailViewModel : ObservableObject
     private void Cancel()
     {
         CancelRequested?.Invoke();
+    }
+
+    private async Task InvokeSaveCompletedAsync(EbookDto? dto)
+    {
+        if (SaveCompletedAsync is null)
+            return;
+        foreach (var subscriber in SaveCompletedAsync.GetInvocationList())
+        {
+            if (subscriber is not Func<EbookDto?, Task> handler)
+                continue;
+            await handler(dto).ConfigureAwait(true);
+        }
     }
 
     [RelayCommand]
@@ -229,5 +242,20 @@ public partial class EbookDetailViewModel : ObservableObject
         if (value is string single)
             return single;
         return value.ToString();
+    }
+
+    [RelayCommand]
+    private async Task AddPublisherToCatalogAsync()
+    {
+        StatusMessage = "Adding to catalog…";
+        try
+        {
+            var result = await _api.AddKnownPublisherAsync(Publisher ?? string.Empty);
+            StatusMessage = result.Message;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not add publisher: {ex.Message}";
+        }
     }
 }

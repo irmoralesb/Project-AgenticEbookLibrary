@@ -171,12 +171,19 @@
                         <TextBox Grid.Column="0"
                                  Text="{Binding Publisher, UpdateSourceTrigger=PropertyChanged}"
                                  Padding="8,6" FontSize="13" />
-                        <Button Grid.Column="1"
-                                Content="Find again"
-                                Margin="8,0,0,0"
-                                Style="{StaticResource SecondaryButtonStyle}"
-                                Command="{Binding OpenFindAgainCommand}"
-                                CommandParameter="publisher" />
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Margin="8,0,0,0">
+                            <Button Content="Add to catalog"
+                                    ToolTip="Saves this imprint to the library catalog for faster matching on new books"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding AddPublisherToCatalogCommand}" />
+                            <Button Content="Find again"
+                                    Margin="8,0,0,0"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding OpenFindAgainCommand}"
+                                    CommandParameter="publisher" />
+                        </StackPanel>
                     </Grid>
 
                     <TextBlock Text="Description" Style="{StaticResource FieldLabelStyle}" />

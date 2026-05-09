@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System.Threading.Tasks;
+using System.Windows;
+using EbookLibraryUI.Models;
 using EbookLibraryUI.ViewModels;
 using EbookLibraryUI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,7 +43,7 @@ public partial class MainWindow : Window
         _settingsView = new SettingsView { DataContext = settingsVm };
 
         var detailVm = App.Services.GetRequiredService<EbookDetailViewModel>();
-        detailVm.SaveCompleted += () => ShowLibraryView(refresh: true);
+        detailVm.SaveCompletedAsync += OnDetailSaveCompletedAsync;
         detailVm.CancelRequested += () => ShowLibraryView(refresh: false);
         _detailView = new EbookDetailView { DataContext = detailVm };
     }
@@ -67,5 +69,12 @@ public partial class MainWindow : Window
         if (_detailView?.DataContext is EbookDetailViewModel vm)
             vm.LoadFrom(book);
         PageFrame.Navigate(_detailView);
+    }
+
+    private async Task OnDetailSaveCompletedAsync(EbookDto? updatedFromPut)
+    {
+        PageFrame.Navigate(_libraryView);
+        if (_libraryView?.DataContext is LibraryViewModel vm)
+            await vm.RefreshLibraryAfterSavedAsync(updatedFromPut).ConfigureAwait(true);
     }
 }
