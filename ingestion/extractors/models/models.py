@@ -62,6 +62,16 @@ class QueryCategoryMetadata(BaseModel):
     )
 
 
+class QueryTags(BaseModel):
+    """Topic tags extracted by the LLM for RAG filtering"""
+    tags: list[str]=Field(default_factory=list, max_length=50, description=(
+        "5-15 canonical kebab-case topic keywords. Concept and "
+        "technology nouns only. No author names, publisher, ISBN, "
+        "year, or generic words like 'book' or 'introduction'."
+    ),
+)
+
+
 def map_query_to_ebook_metadata(
     *,
     title: str,

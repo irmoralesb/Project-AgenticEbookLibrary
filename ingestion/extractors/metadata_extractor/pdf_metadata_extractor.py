@@ -10,9 +10,11 @@ from extractors.tools.authors_extractor import AuthorsExtractor
 from extractors.tools.description_extractor import DescriptionExtractor
 from extractors.tools.category_extractor import CategoryExtractor
 from extractors.tools.language_extractor import LanguageExtractor
+from extractors.tools.tags_extractor import TagsExtractor
 from extractors.tools.cover_image_utils import find_existing_cover, guess_mime_type_from_suffix
 from extractors.models.models import CoverExtractionResult, EbookMetadata, map_query_to_ebook_metadata
 from extractors.models.errors import *
+
 
 _FAILURE_SENTINELS: frozenset[str] = frozenset({"n/a", "not found"})
 
@@ -26,7 +28,7 @@ class PdfDataExtractor():
     _COVER_DPI: int = 160
     _COVER_FORMAT: str = "png"
 
-    _EXTRACTOR_PAGE_WINDOWS: dict[str, (int, int)] = {
+    _EXTRACTOR_PAGE_WINDOWS: dict[str, tuple[int, int]] = {
         "isbn": (6, 9),
         "year": (6, 9),
         "publisher": (6, 9),
@@ -34,6 +36,7 @@ class PdfDataExtractor():
         "language": (2, 4),
         "description": (12, 14),
         "category": (10, 15),
+        "tags": (4, 12),
     }
 
     def __init__(
@@ -47,6 +50,7 @@ class PdfDataExtractor():
         description_extractor: DescriptionExtractor,
         category_extractor: CategoryExtractor,
         language_extractor: LanguageExtractor,
+        tags_extractor: TagsExtractor,
     ) -> None:
         self.title_extractor = title_extractor
         self.page_counter_extractor = page_counter_extractor
@@ -57,6 +61,7 @@ class PdfDataExtractor():
         self.description_extractor = description_extractor
         self.category_extractor = category_extractor
         self.language_extractor = language_extractor
+        self.tags_extractor = tags_extractor
 
     def _normalize(self, text: str, max_chars: int = 12000) -> str:
         text = re.sub(r"[ \t]+", " ", text)
@@ -88,6 +93,18 @@ class PdfDataExtractor():
             parts.append(pdf_file[page_index].get_text())
         return self._normalize("\n\n".join(parts), max_chars=max_chars)
 
+    def _get_back_of_book_excerpt(
+        self, pdf_file: fitz.Document, max_chars: int = 3000
+    ) -> str:
+        total_pages = len(pdf_file)
+        if total_pages == 0:
+            return ""
+
+        start = max(0, int(total_pages * 0.95))
+        return self._get_pages_range_to_analize(
+            pdf_file, start, total_pages, max_chars=max_chars
+        )
+
     def _build_extractor_windows(self, pdf_file: fitz.Document) -> dict[str, list[str]]:
         max_pages = len(pdf_file)
 
@@ -100,6 +117,10 @@ class PdfDataExtractor():
             range_list.append(self._get_pages_range_to_analize(pdf_file, min(
                 page_ranges[0], max_pages), min(page_ranges[1], max_pages)))
             extractor_dict[name] = range_list
+
+        back_excerpt = self._get_back_of_book_excerpt(pdf_file)
+        if back_excerpt:
+            extractor_dict["tags"].append(back_excerpt)
 
         return extractor_dict
 
@@ -200,7 +221,8 @@ class PdfDataExtractor():
         book_path = book_path.expanduser().resolve()
         sidecar_dir = book_path.parent
         sidecar_dir.mkdir(parents=True, exist_ok=True)
-        existing = find_existing_cover(book_path, sidecar_dir, prior_cover_path)
+        existing = find_existing_cover(
+            book_path, sidecar_dir, prior_cover_path)
         if existing is not None:
             resolved_existing = existing.resolve()
             resolved_book = book_path.resolve()
@@ -293,11 +315,24 @@ class PdfDataExtractor():
             parsed_language = None
             has_errors = True
 
+        try:
+            parsed_tags = self.tags_extractor.get_tags(
+                extractor_windows["tags"],
+                title=title_with_edition.title,
+                description=parsed_description,
+                category=parsed_category.category if parsed_category else None,
+                subcategory=parsed_category.subcategory if parsed_category else None
+            )
+        except Exception:
+            # Tags are non-critical; missing tags do not mark the book broken.
+            parsed_tags = []
+
         # --- Cover image ---
         cover_image_path: str | None = None
         cover_image_mime_type: str | None = None
         try:
-            _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(pdf_path)
+            _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(
+                pdf_path)
             cover_image_path = str(_cover_path)
         except Exception:
             cover_image_path = None
@@ -334,4 +369,5 @@ class PdfDataExtractor():
             has_errors=has_errors,
             cover_image_path=cover_image_path,
             cover_image_mime_type=cover_image_mime_type,
+            tags=parsed_tags
         )

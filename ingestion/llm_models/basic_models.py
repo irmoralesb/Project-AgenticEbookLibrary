@@ -1,12 +1,13 @@
 from textwrap import dedent
-from langchain_core.tools import structured
-from langchain_ollama.chat_models import ChatOllama
+
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import content
+from langchain_ollama.chat_models import ChatOllama
+
 from extractors.models.models import (
     QueryAuthors,
     QueryCategoryMetadata,
     QueryPublisher,
+    QueryTags,
     QueryTitleWithEdition,
 )
 
@@ -233,3 +234,74 @@ class BasicLocalModel():
         raw = result.content if hasattr(result, "content") else str(result)
         code = raw.strip().lower()[:10]
         return code if code else "en"
+
+    def extract_tags(
+        self,
+        *,
+        text:str,
+        title: str|None,
+        description: str | None,
+        category:str |None,
+        subcategory:str | None
+    ) -> QueryTags:
+        system_message = dedent(
+        """
+            You produce TOPIC TAGS for a book so a downstream RAG system can
+            filter by subject. Tags must be predictable across books on the
+            same subject — that is more important than being clever.
+            Rules:
+            - Output ONLY the JSON object that matches the schema.
+            - Return 5-15 tags. Never more than 50.
+            - Each tag is lowercase kebab-case (e.g. "vector-database",
+            "prompt-engineering", "italian-cuisine").
+            - Each tag is a concept or technology noun, 1-4 words, <= 80 chars.
+            - Do NOT include: author names, publisher names, edition labels,
+            years, ISBNs, language names, the words "book", "chapter",
+            "introduction", "guide", "handbook", "tutorial".
+            - Do NOT include synonyms of the same concept (pick one of
+            "postgres" / "postgresql", not both).
+            - Do NOT repeat the provided category or subcategory verbatim.
+            - Prefer terms a reader would search for: technologies, methods,
+            domains, sub-topics that distinguish THIS book from others on
+            the same shelf.
+            Examples:
+            Priors: title="FastAPI in Practice", category="Programming",
+                    subcategory="Python"
+            Output: {{"tags":["fastapi","async-io","pydantic","rest-api","openapi","pytest","dependency-injection"]}}
+            Priors: title="The Silk Road", category="History", subcategory="Asia"
+            Output: {{"tags":["silk-road","trade-routes","central-asia","medieval-history","cultural-exchange"]}}
+        """
+        ).strip()
+
+        human_message = dedent(
+        """
+        Priors:
+        - Title: {title}
+        - Description: {description}
+        - Category: {category} / {subcategory}
+
+        Use the excerpt below mainly to discover specific topics, methods,
+        and technologies the book covers. Do not tag boilerplate.
+
+        -----BEGING EBOOK EXCERPT-----
+        {text}
+        -----END EBOOK EXCERPT-----
+        """).strip()
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system",system_message),
+            ("human", human_message)
+        ])
+
+        structured_output = self.llm.with_structured_output(
+            QueryTags, method="json_schema"
+        )
+        chain = prompt | structured_output
+
+        return chain.invoke({
+            "title": title or "Unknown",
+            "description":(description or "")[:1500],
+            "category": category or "Other",
+            "subcategory":subcategory or "Other",
+            "text": text
+        })

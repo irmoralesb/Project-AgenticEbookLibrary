@@ -43,6 +43,9 @@ def _make_pdf_extractor(**overrides) -> PdfDataExtractor:
     language = Mock()
     language.get_language.return_value = None
 
+    tags = Mock()
+    tags.get_tags.return_value = []
+
     defaults = dict(
         title_extractor=title,
         page_counter_extractor=page_counter,
@@ -53,6 +56,7 @@ def _make_pdf_extractor(**overrides) -> PdfDataExtractor:
         description_extractor=description,
         category_extractor=category,
         language_extractor=language,
+        tags_extractor=tags,
     )
     defaults.update(overrides)
     return PdfDataExtractor(**defaults)
@@ -83,6 +87,9 @@ def _make_epub_extractor(**overrides) -> EpubDataExtractor:
     language = Mock()
     language.get_language.return_value = None
 
+    tags = Mock()
+    tags.get_tags.return_value = []
+
     defaults = dict(
         title_extractor=Mock(),
         page_counter_extractor=page_counter,
@@ -93,6 +100,7 @@ def _make_epub_extractor(**overrides) -> EpubDataExtractor:
         description_extractor=description,
         category_extractor=category,
         language_extractor=language,
+        tags_extractor=tags,
     )
     defaults.update(overrides)
     return EpubDataExtractor(**defaults)

@@ -66,6 +66,9 @@ def _make_extractor(**overrides) -> EpubDataExtractor:
     language = Mock()
     language.get_language.return_value = None
 
+    tags = Mock()
+    tags.get_tags.return_value = []
+
     defaults = {
         "title_extractor": Mock(),
         "page_counter_extractor": page_counter,
@@ -76,6 +79,7 @@ def _make_extractor(**overrides) -> EpubDataExtractor:
         "description_extractor": description,
         "category_extractor": category,
         "language_extractor": language,
+        "tags_extractor": tags,
     }
     defaults.update(overrides)
     return EpubDataExtractor(**defaults)

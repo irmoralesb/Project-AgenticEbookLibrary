@@ -2,6 +2,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
+from _pytest.stash import T
 import ebooklib
 import fitz
 from ebooklib import epub
@@ -18,6 +19,7 @@ from extractors.tools.page_count_extractor import PageCounterExtractor
 from extractors.tools.publisher_extractor import PublisherExtractor
 from extractors.tools.title_extractor import TitleExtractor
 from extractors.tools.year_extractor import YearExtractor
+from ingestion.extractors.tools.tags_extractor import TagsExtractor
 
 _FAILURE_SENTINELS: frozenset[str] = frozenset({"n/a", "not found"})
 
@@ -56,7 +58,8 @@ class _HtmlTextExtractor(HTMLParser):
 
 
 def _strip_html(raw: bytes | str) -> str:
-    text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else raw
+    text = raw.decode(
+        "utf-8", errors="replace") if isinstance(raw, bytes) else raw
     parser = _HtmlTextExtractor()
     parser.feed(text)
     return parser.get_text()
@@ -72,6 +75,7 @@ class EpubDataExtractor:
         "language": (2, 4),
         "description": (12, 14),
         "category": (10, 15),
+        "tags": (4, 12)
     }
 
     def __init__(
@@ -85,6 +89,7 @@ class EpubDataExtractor:
         description_extractor: DescriptionExtractor,
         category_extractor: CategoryExtractor,
         language_extractor: LanguageExtractor,
+        tags_extractor: TagsExtractor
     ) -> None:
         self.title_extractor = title_extractor
         self.page_counter_extractor = page_counter_extractor
@@ -95,6 +100,7 @@ class EpubDataExtractor:
         self.description_extractor = description_extractor
         self.category_extractor = category_extractor
         self.language_extractor = language_extractor
+        self.tags_extractor = tags_extractor
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -249,7 +255,8 @@ class EpubDataExtractor:
         book_path = book_path.expanduser().resolve()
         sidecar_dir = book_path.parent
         sidecar_dir.mkdir(parents=True, exist_ok=True)
-        existing = find_existing_cover(book_path, sidecar_dir, prior_cover_path)
+        existing = find_existing_cover(
+            book_path, sidecar_dir, prior_cover_path)
         if existing is not None:
             resolved_existing = existing.resolve()
             resolved_book = book_path.resolve()
@@ -278,7 +285,8 @@ class EpubDataExtractor:
                 cause=exc,
             ) from exc
 
-        spine_item_count = self.page_counter_extractor.get_total_spine_items_for_epub(book)
+        spine_item_count = self.page_counter_extractor.get_total_spine_items_for_epub(
+            book)
         extractor_windows = self._build_extractor_windows(book)
 
         # --- Title ---
@@ -288,7 +296,8 @@ class EpubDataExtractor:
             parsed_edition = "Not Specified"
         else:
             try:
-                title_with_edition = self.title_extractor.get_title_and_edition(epub_path.name)
+                title_with_edition = self.title_extractor.get_title_and_edition(
+                    epub_path.name)
                 parsed_title = title_with_edition.title
                 parsed_edition = title_with_edition.edition
             except Exception as exc:
@@ -305,7 +314,8 @@ class EpubDataExtractor:
             parsed_authors = dc_creators
         else:
             try:
-                parsed_authors = self.authors_extractor.get_authors(extractor_windows["authors"])
+                parsed_authors = self.authors_extractor.get_authors(
+                    extractor_windows["authors"])
             except Exception:
                 parsed_authors = []
                 has_errors = True
@@ -316,7 +326,8 @@ class EpubDataExtractor:
             parsed_language: str | None = dc_languages[0].strip()
         else:
             try:
-                parsed_language = self.language_extractor.get_language(extractor_windows["language"])
+                parsed_language = self.language_extractor.get_language(
+                    extractor_windows["language"])
             except Exception:
                 parsed_language = None
                 has_errors = True
@@ -327,7 +338,8 @@ class EpubDataExtractor:
             parsed_publisher: str | None = dc_publishers[0].strip()
         else:
             try:
-                parsed_publisher = self.publisher_extractor.extract_publisher_from_text(extractor_windows["publisher"])
+                parsed_publisher = self.publisher_extractor.extract_publisher_from_text(
+                    extractor_windows["publisher"])
             except Exception:
                 parsed_publisher = None
                 has_errors = True
@@ -342,7 +354,8 @@ class EpubDataExtractor:
                 break
         if parsed_isbn is None:
             try:
-                parsed_isbn = self.isbn_extractor.extract_isbn_from_text(extractor_windows["isbn"])
+                parsed_isbn = self.isbn_extractor.extract_isbn_from_text(
+                    extractor_windows["isbn"])
             except Exception:
                 parsed_isbn = None
                 has_errors = True
@@ -356,7 +369,8 @@ class EpubDataExtractor:
                 break
         if parsed_year is None:
             try:
-                parsed_year = self.year_extractor.extract_year_from_text(extractor_windows["year"])
+                parsed_year = self.year_extractor.extract_year_from_text(
+                    extractor_windows["year"])
             except Exception:
                 parsed_year = None
                 has_errors = True
@@ -367,23 +381,38 @@ class EpubDataExtractor:
             parsed_description: str | None = dc_descriptions[0].strip()
         else:
             try:
-                parsed_description = self.description_extractor.get_description(extractor_windows["description"])
+                parsed_description = self.description_extractor.get_description(
+                    extractor_windows["description"])
             except Exception:
                 parsed_description = None
                 has_errors = True
 
         # --- Category (always via LLM — not in OPF standard) ---
         try:
-            parsed_category = self.category_extractor.get_category(extractor_windows["category"])
+            parsed_category = self.category_extractor.get_category(
+                extractor_windows["category"])
         except Exception:
             parsed_category = None
             has_errors = True
+
+        try:
+            parsed_tags = self.tags_extractor.get_tags(
+                texts=extractor_windows["tags"],
+                title = title_with_edition.title or None,
+                description= parsed_description,
+                category=parsed_category.category if parsed_category else None,
+                subcategory=parsed_category.subcategory if parsed_category else None,
+            )
+        except Exception:
+            # Tags are non-critical; missing tags do not mark the book broken.
+            parsed_tags = []
 
         # --- Cover image ---
         cover_image_path: str | None = None
         cover_image_mime_type: str | None = None
         try:
-            _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(epub_path)
+            _cover_path, cover_image_mime_type, _ = self.extract_and_save_cover_image(
+                epub_path)
             cover_image_path = str(_cover_path)
         except Exception:
             cover_image_path = None
@@ -420,4 +449,5 @@ class EpubDataExtractor:
             has_errors=has_errors,
             cover_image_path=cover_image_path,
             cover_image_mime_type=cover_image_mime_type,
+            tags=parsed_tags
         )

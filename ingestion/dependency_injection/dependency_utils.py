@@ -24,6 +24,7 @@ from extractors.tools.isbn_extractor import IsbnExtractor
 from extractors.tools.language_extractor import LanguageExtractor
 from extractors.tools.page_count_extractor import PageCounterExtractor
 from extractors.tools.publisher_extractor import PublisherExtractor
+from extractors.tools.tags_extractor import TagsExtractor
 from persistence.publisher_catalog import load_known_publisher_names_from_db
 from extractors.tools.title_extractor import TitleExtractor
 from extractors.tools.year_extractor import YearExtractor
@@ -108,6 +109,10 @@ def get_ebook_scanner() -> EbookScanner:
     """Provide the Ebook Scanner instance."""
     return EbookScanner()
 
+def get_tags_extractor() -> TagsExtractor:
+    """Provide the Tags Extrator instance"""
+    return TagsExtractor(llm=get_basic_llm_model())
+
 
 def get_pdf_data_extractor() -> PdfDataExtractor:
     """Provide the PdfDataExtractor instance."""
@@ -121,6 +126,7 @@ def get_pdf_data_extractor() -> PdfDataExtractor:
         description_extractor=get_description_extractor(),
         category_extractor=get_category_extractor(),
         language_extractor=get_language_extractor(),
+        tags_extractor=get_tags_extractor()
     )
 
 
@@ -136,4 +142,5 @@ def get_epub_data_extractor() -> EpubDataExtractor:
         description_extractor=get_description_extractor(),
         category_extractor=get_category_extractor(),
         language_extractor=get_language_extractor(),
+        tags_extractor= get_tags_extractor()
     )
