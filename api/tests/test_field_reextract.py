@@ -122,6 +122,40 @@ def test_reextract_endpoint_returns_preview_without_persist(monkeypatch: pytest.
     assert payload["value"] == ["A One", "B Two"]
 
 
+def test_reextract_service_extracts_tags_using_ebook_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    book_path = tmp_path / "book.pdf"
+    _create_pdf(book_path)
+    ebook = SimpleNamespace(
+        file_path=str(book_path),
+        title="Clean Code",
+        description="A handbook of agile software craftsmanship.",
+        category="Programming",
+        subcategory="Software Engineering",
+    )
+
+    monkeypatch.setattr(
+        field_reextract_service,
+        "_extract_pdf_range_text",
+        lambda *_args, **_kwargs: "stub text",
+    )
+    monkeypatch.setattr(
+        field_reextract_service,
+        "_resolve_tags_value",
+        lambda _text, _ebook: ["clean-code", "refactoring", "software-craftsmanship"],
+    )
+
+    result = field_reextract_service.reextract_field_for_ebook(
+        ebook=ebook,
+        field="tags",
+        page_range="1-8",
+        direction="front_to_back",
+    )
+
+    assert result.field == "tags"
+    assert result.value == ["clean-code", "refactoring", "software-craftsmanship"]
+    assert result.message == "Field extracted successfully."
+
+
 def test_reextract_endpoint_year_returns_integer_value(monkeypatch: pytest.MonkeyPatch) -> None:
     ebook_id = uuid4()
     repo = SimpleNamespace(

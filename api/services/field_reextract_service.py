@@ -17,6 +17,7 @@ from ingestion.dependency_injection.dependency_utils import (
     get_isbn_extractor,
     get_pdf_data_extractor,
     get_publisher_extractor,
+    get_tags_extractor,
     get_year_extractor,
 )
 from persistence.orm.ebook_orm import EbookORM
@@ -115,6 +116,16 @@ def _resolve_field_value(
     return get_publisher_extractor().extract_publisher_from_text([text])
 
 
+def _resolve_tags_value(text: str, ebook: EbookORM) -> list[str]:
+    return get_tags_extractor().get_tags(
+        texts=[text],
+        title=getattr(ebook, "title", None),
+        description=getattr(ebook, "description", None),
+        category=getattr(ebook, "category", None),
+        subcategory=getattr(ebook, "subcategory", None),
+    )
+
+
 def reextract_field_for_ebook(
     ebook: EbookORM,
     field: ReextractFieldName,
@@ -153,7 +164,10 @@ def reextract_field_for_ebook(
             detail=f"Unsupported ebook type '{extension}'. Only .pdf and .epub are supported.",
         )
 
-    value = _resolve_field_value(field, text)
+    if field == "tags":
+        value: str | list[str] | int | None = _resolve_tags_value(text, ebook)
+    else:
+        value = _resolve_field_value(field, text)
     message = "Field extracted successfully." if value else "No value found in selected range."
 
     return ReextractResult(

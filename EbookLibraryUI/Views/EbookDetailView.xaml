@@ -164,10 +164,23 @@
                                FontSize="11"
                                Margin="0,0,0,4"
                                TextWrapping="Wrap" />
-                    <TextBox Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}"
-                             Padding="8,6" FontSize="13"
-                             AcceptsReturn="False"
-                             ToolTip="Example: C#, SOLID Principles, Design Patterns" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="8,6" FontSize="13"
+                                 AcceptsReturn="False"
+                                 ToolTip="Example: C#, SOLID Principles, Design Patterns" />
+                        <Button Grid.Column="1"
+                                Content="Find again"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding OpenFindAgainCommand}"
+                                CommandParameter="tags" />
+                    </Grid>
 
                     <TextBlock Text="Publisher" Style="{StaticResource FieldLabelStyle}" />
                     <Grid>

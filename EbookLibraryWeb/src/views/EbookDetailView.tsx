@@ -153,6 +153,9 @@ export default function EbookDetailView() {
               ? result.value
               : '';
         setForm((prev) => ({ ...prev, year: y }));
+      } else if (result.field === 'tags') {
+        const tags = Array.isArray(result.value) ? result.value : [];
+        setForm((prev) => ({ ...prev, tagsText: tags.join(', ') }));
       } else {
         const value = typeof result.value === 'string' ? result.value : '';
         setForm((prev) => ({ ...prev, publisher: value }));
@@ -421,13 +424,16 @@ export default function EbookDetailView() {
                     label="Tags"
                     hint="comma-separated keywords, any topic (not limited to category)"
                   >
-                    <input
-                      type="text"
-                      value={form.tagsText}
-                      onChange={(e) => handleChange('tagsText', e.target.value)}
-                      placeholder="e.g. C#, SOLID Principles, Design Patterns"
-                      className={inputCls}
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={form.tagsText}
+                        onChange={(e) => handleChange('tagsText', e.target.value)}
+                        placeholder="e.g. C#, SOLID Principles, Design Patterns"
+                        className={inputCls}
+                      />
+                      <FindAgainButton onClick={() => openFindAgain('tags')} />
+                    </div>
                   </Field>
 
                   {/* Publisher */}

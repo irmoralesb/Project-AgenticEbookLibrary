@@ -10,7 +10,7 @@ import type {
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 export type ReextractDirection = 'front_to_back' | 'back_to_front';
-export type ReextractFieldName = 'authors' | 'isbn' | 'publisher' | 'year';
+export type ReextractFieldName = 'authors' | 'isbn' | 'publisher' | 'year' | 'tags';
 
 export interface ReextractFieldRequestDto {
   field: ReextractFieldName;

@@ -97,7 +97,7 @@ class KnownPublisherResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-ReextractFieldName = Literal["authors", "isbn", "publisher", "year"]
+ReextractFieldName = Literal["authors", "isbn", "publisher", "year", "tags"]
 ReextractDirection = Literal["front_to_back", "back_to_front"]
 
 

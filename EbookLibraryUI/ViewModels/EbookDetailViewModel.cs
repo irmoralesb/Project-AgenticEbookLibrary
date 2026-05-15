@@ -192,6 +192,9 @@ public partial class EbookDetailViewModel : ObservableObject
             case "year":
                 Year = ParseYearValue(result.Value);
                 break;
+            case "tags":
+                TagsText = ParseAuthorsValue(result.Value);
+                break;
         }
     }
 
