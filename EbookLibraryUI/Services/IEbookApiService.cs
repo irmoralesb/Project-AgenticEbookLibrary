@@ -9,6 +9,8 @@ public interface IEbookApiService
         int limit = 15,
         string? publisherContains = null,
         string? categoryContains = null,
+        string? tagsContains = null,
+        bool? tagsEmpty = null,
         bool? hasErrors = null,
         CancellationToken ct = default);
 
@@ -18,7 +20,15 @@ public interface IEbookApiService
     Task<ReextractFieldResponseDto> ReextractFieldAsync(Guid id, ReextractFieldRequestDto dto, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<IngestStartResponse> StartIngestAsync(IngestRequestDto request, CancellationToken ct = default);
-    IAsyncEnumerable<IngestProgressEvent> StreamIngestAsync(string jobId, CancellationToken ct);
+    IAsyncEnumerable<IngestProgressEvent> StreamIngestAsync(string jobId, CancellationToken ct = default);
+
+    Task<IngestStartResponse> StartBatchReextractFieldAsync(
+        BatchReextractFieldJobRequestDto request,
+        CancellationToken ct = default);
+
+    IAsyncEnumerable<IngestProgressEvent> StreamBatchReextractFieldAsync(
+        string jobId,
+        CancellationToken ct = default);
     Task<string?> PickFolderAsync(CancellationToken ct = default);
 
     /// <summary>Adds a publisher name to the regex catalog. Duplicate names are treated as success.</summary>

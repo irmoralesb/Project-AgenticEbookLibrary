@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Protocol, runtime_checkable
 
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 
@@ -60,6 +60,8 @@ class EbookRepository(Protocol):
         *,
         publisher_contains: str | None = None,
         category_contains: str | None = None,
+        tags_contains: str | None = None,
+        tags_empty: bool | None = None,
         has_errors: bool | None = None,
     ) -> list[EbookORM]:
         """Return a paginated slice of ebook rows ordered by title, with optional filters."""
@@ -99,6 +101,8 @@ class SqlAlchemyEbookRepository:  # implements EbookRepository
         *,
         publisher_contains: str | None = None,
         category_contains: str | None = None,
+        tags_contains: str | None = None,
+        tags_empty: bool | None = None,
         has_errors: bool | None = None,
     ) -> list[EbookORM]:
         stmt = select(EbookORM)
@@ -108,6 +112,12 @@ class SqlAlchemyEbookRepository:  # implements EbookRepository
         if category_contains and (t := category_contains.strip()):
             pattern = f"%{_escape_like_fragment(t)}%"
             stmt = stmt.where(EbookORM.category.ilike(pattern, escape="\\"))
+        if tags_empty:
+            stmt = stmt.where(func.coalesce(func.cardinality(EbookORM.tags), 0) == 0)
+        elif tags_contains and (t := tags_contains.strip()):
+            pattern = f"%{_escape_like_fragment(t)}%"
+            joined = func.array_to_string(EbookORM.tags, "\x1f")
+            stmt = stmt.where(joined.ilike(pattern, escape="\\"))
         if has_errors is not None:
             stmt = stmt.where(EbookORM.has_errors == has_errors)
         stmt = stmt.order_by(EbookORM.title).offset(skip).limit(limit)

@@ -29,6 +29,8 @@ public class EbookApiService : IEbookApiService
         int limit = 15,
         string? publisherContains = null,
         string? categoryContains = null,
+        string? tagsContains = null,
+        bool? tagsEmpty = null,
         bool? hasErrors = null,
         CancellationToken ct = default)
     {
@@ -41,6 +43,10 @@ public class EbookApiService : IEbookApiService
             qs.Add($"publisher={Uri.EscapeDataString(publisherContains.Trim())}");
         if (!string.IsNullOrWhiteSpace(categoryContains))
             qs.Add($"category={Uri.EscapeDataString(categoryContains.Trim())}");
+        if (tagsEmpty == true)
+            qs.Add("tags_empty=true");
+        else if (!string.IsNullOrWhiteSpace(tagsContains))
+            qs.Add($"tags={Uri.EscapeDataString(tagsContains.Trim())}");
         if (hasErrors.HasValue)
             qs.Add($"has_errors={(hasErrors.Value ? "true" : "false")}");
 
@@ -136,12 +142,47 @@ public class EbookApiService : IEbookApiService
         return result ?? throw new InvalidOperationException("Empty response from ingest/start.");
     }
 
+    public async Task<IngestStartResponse> StartBatchReextractFieldAsync(
+        BatchReextractFieldJobRequestDto request,
+        CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync(
+            "api/ebooks/batch-reextract-field/start",
+            request,
+            _jsonOptions,
+            ct);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<IngestStartResponse>(_jsonOptions, ct);
+        return result ?? throw new InvalidOperationException("Empty response from batch-reextract-field/start.");
+    }
+
     public async IAsyncEnumerable<IngestProgressEvent> StreamIngestAsync(
+        string jobId,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await foreach (var evt in StreamSseProgressAsync("api/ingest/stream", jobId, ct).ConfigureAwait(false))
+            yield return evt;
+    }
+
+    public async IAsyncEnumerable<IngestProgressEvent> StreamBatchReextractFieldAsync(
+        string jobId,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await foreach (
+            var evt in StreamSseProgressAsync("api/ebooks/batch-reextract-field/stream", jobId, ct)
+                .ConfigureAwait(false))
+            yield return evt;
+    }
+
+    private async IAsyncEnumerable<IngestProgressEvent> StreamSseProgressAsync(
+        string streamPathWithoutQuery,
         string jobId,
         [EnumeratorCancellation] CancellationToken ct)
     {
+        var url =
+            $"{streamPathWithoutQuery}?job_id={Uri.EscapeDataString(jobId)}";
         using var response = await _http.GetAsync(
-            $"api/ingest/stream?job_id={jobId}",
+            url,
             HttpCompletionOption.ResponseHeadersRead,
             ct
         );
@@ -156,7 +197,6 @@ public class EbookApiService : IEbookApiService
             if (line is null)
                 break;
 
-            // SSE lines start with "data: "
             if (!line.StartsWith("data:", StringComparison.Ordinal))
                 continue;
 

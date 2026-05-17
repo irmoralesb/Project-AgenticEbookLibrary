@@ -4,7 +4,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using EbookLibraryUI.Models;
 using EbookLibraryUI.ViewModels;
 
 namespace EbookLibraryUI.Views;
@@ -90,11 +89,11 @@ public partial class LibraryView : Page
         if (FindAncestor<DataGridColumnHeader>(e.OriginalSource as DependencyObject) is not null)
             return;
 
-        if (FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject)?.Item is not EbookDto book)
+        if (FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject)?.Item is not LibraryBookRowViewModel row)
             return;
 
         if (dg.DataContext is LibraryViewModel vm)
-            vm.OpenBookCommand.Execute(book);
+            vm.OpenBookCommand.Execute(row.Book);
     }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject

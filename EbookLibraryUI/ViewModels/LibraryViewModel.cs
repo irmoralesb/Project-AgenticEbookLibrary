@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EbookLibraryUI.Models;
@@ -17,6 +20,8 @@ public enum LibraryErrorFilter
 
 public partial class LibraryViewModel : ObservableObject
 {
+    private static readonly Regex PageRangeRe = new(@"^\s*\d+\s*-\s*\d+\s*$", RegexOptions.Compiled);
+
     private const int PageSize = 15;
 
     private readonly IEbookApiService _api;
@@ -24,15 +29,30 @@ public partial class LibraryViewModel : ObservableObject
     private int _nextSkip;
     private string _appliedPublisher = string.Empty;
     private string _appliedCategory = string.Empty;
+    private string _appliedTagsFilter = string.Empty;
+    private bool _appliedTagsEmptyOnly;
     private LibraryErrorFilter _appliedErrorFilter = LibraryErrorFilter.All;
 
-    public ObservableCollection<EbookDto> Books { get; } = [];
+    public ObservableCollection<LibraryBookRowViewModel> Books { get; } = [];
+
+    public ObservableCollection<string> ProgressLog { get; } = [];
 
     [ObservableProperty]
     private string _publisherFilterText = string.Empty;
 
     [ObservableProperty]
     private string _categoryFilterText = string.Empty;
+
+    [ObservableProperty]
+    private string _tagsFilterText = string.Empty;
+
+    [ObservableProperty]
+    private bool _tagsEmptyOnly;
+
+    public bool IsTagsTextFilterEnabled => !TagsEmptyOnly;
+
+    partial void OnTagsEmptyOnlyChanged(bool value) =>
+        OnPropertyChanged(nameof(IsTagsTextFilterEnabled));
 
     [ObservableProperty]
     private LibraryErrorFilter _errorFilter = LibraryErrorFilter.All;
@@ -50,20 +70,63 @@ public partial class LibraryViewModel : ObservableObject
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
-    private EbookDto? _selectedBook;
+    private LibraryBookRowViewModel? _selectedBook;
 
-    public bool IsLibraryBusy => IsLoading || IsLoadingMore;
+    [ObservableProperty]
+    private bool _isBatchUpdateMode;
+
+    [ObservableProperty]
+    private bool _isBatchRunning;
+
+    [ObservableProperty]
+    private bool _batchDialogOpen;
+
+    [ObservableProperty]
+    private string _batchField = "authors";
+
+    [ObservableProperty]
+    private string _batchPageRange = "1-5";
+
+    [ObservableProperty]
+    private string _batchDirection = "front_to_back";
+
+    public bool IsLibraryBusy => IsLoading || IsLoadingMore || IsBatchRunning;
 
     public event Action<EbookDto>? EditRequested;
 
     public LibraryViewModel(IEbookApiService api)
     {
         _api = api;
+        ProgressLog.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowBatchProgressPanel));
     }
+
+    public bool ShowBatchProgressPanel =>
+        IsBatchUpdateMode || IsBatchRunning || ProgressLog.Count > 0;
 
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(IsLibraryBusy));
 
     partial void OnIsLoadingMoreChanged(bool value) => OnPropertyChanged(nameof(IsLibraryBusy));
+
+    partial void OnIsBatchRunningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsLibraryBusy));
+        OnPropertyChanged(nameof(ShowBatchProgressPanel));
+    }
+
+    partial void OnIsBatchUpdateModeChanged(bool value)
+    {
+        if (!value)
+        {
+            foreach (var row in Books)
+                row.IsBatchSelected = false;
+            BatchDialogOpen = false;
+        }
+
+        OnPropertyChanged(nameof(ShowBatchProgressPanel));
+    }
+
+    partial void OnBatchDialogOpenChanged(bool value) =>
+        OnPropertyChanged(nameof(ShowBatchProgressPanel));
 
     [RelayCommand]
     private async Task LoadBooksAsync()
@@ -95,14 +158,15 @@ public partial class LibraryViewModel : ObservableObject
     {
         for (var i = 0; i < Books.Count; i++)
         {
-            if (Books[i].Id != updatedFromPut.Id)
+            if (Books[i].Book.Id != updatedFromPut.Id)
                 continue;
             var merged = CloneFromServerDto(updatedFromPut);
             merged.CoverUrl = await _api.DownloadCoverToTempAsync(updatedFromPut.Id);
+            var wasSelected = Books[i].IsBatchSelected;
             Books.RemoveAt(i);
-            Books.Insert(i, merged);
-            if (SelectedBook?.Id == updatedFromPut.Id)
-                SelectedBook = merged;
+            Books.Insert(i, new LibraryBookRowViewModel(merged) { IsBatchSelected = wasSelected });
+            if (SelectedBook?.Book.Id == updatedFromPut.Id)
+                SelectedBook = Books[i];
             break;
         }
     }
@@ -143,7 +207,7 @@ public partial class LibraryViewModel : ObservableObject
             var batch = await FetchPageAsync();
             await PopulateCoverUrlsAsync(batch);
             foreach (var b in batch)
-                Books.Add(b);
+                Books.Add(new LibraryBookRowViewModel(b));
             AdvancePaging(batch.Count);
             StatusMessage = $"{Books.Count} book(s) shown.";
         }
@@ -167,6 +231,8 @@ public partial class LibraryViewModel : ObservableObject
             {
                 _appliedPublisher = PublisherFilterText.Trim();
                 _appliedCategory = CategoryFilterText.Trim();
+                _appliedTagsFilter = TagsFilterText.Trim();
+                _appliedTagsEmptyOnly = TagsEmptyOnly;
                 _appliedErrorFilter = ErrorFilter;
             }
 
@@ -177,7 +243,7 @@ public partial class LibraryViewModel : ObservableObject
             var batch = await FetchPageAsync();
             await PopulateCoverUrlsAsync(batch);
             foreach (var b in batch)
-                Books.Add(b);
+                Books.Add(new LibraryBookRowViewModel(b));
             AdvancePaging(batch.Count);
 
             StatusMessage = $"{Books.Count} book(s) shown.";
@@ -205,16 +271,22 @@ public partial class LibraryViewModel : ObservableObject
 
         string? publisher = string.IsNullOrWhiteSpace(_appliedPublisher) ? null : _appliedPublisher;
         string? category = string.IsNullOrWhiteSpace(_appliedCategory) ? null : _appliedCategory;
+        string? tags = _appliedTagsEmptyOnly || string.IsNullOrWhiteSpace(_appliedTagsFilter)
+            ? null
+            : _appliedTagsFilter;
+        bool? tagsEmpty = _appliedTagsEmptyOnly ? true : null;
 
         return await _api.GetAllAsync(
             skip: _nextSkip,
             limit: PageSize,
             publisherContains: publisher,
             categoryContains: category,
+            tagsContains: tags,
+            tagsEmpty: tagsEmpty,
             hasErrors: hasErrors);
     }
 
-    private async Task PopulateCoverUrlsAsync(IEnumerable<EbookDto> books)
+    private async Task PopulateCoverUrlsAsync(List<EbookDto> books)
     {
         var tasks = books.Select(async book =>
         {
@@ -230,12 +302,13 @@ public partial class LibraryViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task DeleteBookAsync(EbookDto book)
+    private async Task DeleteBookAsync(LibraryBookRowViewModel row)
     {
+        var book = row.Book;
         try
         {
             await _api.DeleteAsync(book.Id);
-            Books.Remove(book);
+            Books.Remove(row);
             StatusMessage = $"Deleted: {book.Title}";
         }
         catch (Exception ex)
@@ -245,9 +318,9 @@ public partial class LibraryViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void EditBook(EbookDto book)
+    private void EditBook(LibraryBookRowViewModel row)
     {
-        EditRequested?.Invoke(book);
+        EditRequested?.Invoke(row.Book);
     }
 
     [RelayCommand]
@@ -290,6 +363,91 @@ public partial class LibraryViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusMessage = $"Could not open file: {ex.Message}";
+        }
+    }
+
+    private bool AllVisibleSelected() =>
+        Books.Count > 0 && Books.All(r => r.IsBatchSelected);
+
+    [RelayCommand]
+    private void ToggleSelectAllVisible()
+    {
+        var select = !AllVisibleSelected();
+        foreach (var row in Books)
+            row.IsBatchSelected = select;
+    }
+
+    [RelayCommand]
+    private void OpenBatchReextractDialog()
+    {
+        if (!Books.Any(r => r.IsBatchSelected))
+        {
+            StatusMessage = "Select at least one book.";
+            return;
+        }
+
+        BatchDialogOpen = true;
+    }
+
+    [RelayCommand]
+    private void CancelBatchDialog()
+    {
+        BatchDialogOpen = false;
+    }
+
+    [RelayCommand]
+    private async Task RunBatchReextractAsync()
+    {
+        var ids = Books.Where(r => r.IsBatchSelected).Select(r => r.Book.Id).ToList();
+        if (ids.Count == 0)
+        {
+            StatusMessage = "Select at least one book.";
+            return;
+        }
+
+        if (!PageRangeRe.IsMatch(BatchPageRange))
+        {
+            StatusMessage = "Page range must look like start-end (example: 5-10).";
+            return;
+        }
+
+        BatchDialogOpen = false;
+        ProgressLog.Clear();
+        IsBatchRunning = true;
+        StatusMessage = "Batch re-extract running…";
+
+        try
+        {
+            var start = await _api.StartBatchReextractFieldAsync(
+                new BatchReextractFieldJobRequestDto
+                {
+                    EbookIds = ids,
+                    Field = BatchField.Trim(),
+                    PageRange = BatchPageRange.Trim(),
+                    Direction = BatchDirection.Trim(),
+                });
+
+            Application.Current.Dispatcher.Invoke(() => ProgressLog.Add($"Job started: {start.JobId}"));
+
+            await foreach (var evt in _api.StreamBatchReextractFieldAsync(start.JobId))
+            {
+                Application.Current.Dispatcher.Invoke(() => ProgressLog.Add(evt.Message));
+                if (evt.IsEndOfStream)
+                    break;
+            }
+
+            Application.Current.Dispatcher.Invoke(() => ProgressLog.Add("--- Batch complete ---"));
+            StatusMessage = "Batch re-extract complete.";
+            await ReloadFromServerAsync(appliedFromDraft: false);
+        }
+        catch (Exception ex)
+        {
+            Application.Current.Dispatcher.Invoke(() => ProgressLog.Add($"Error: {ex.Message}"));
+            StatusMessage = $"Batch failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBatchRunning = false;
         }
     }
 }

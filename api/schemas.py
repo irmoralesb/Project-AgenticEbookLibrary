@@ -116,3 +116,14 @@ class ReextractFieldResponse(BaseModel):
     used_end_page: int
     direction: ReextractDirection
     message: str
+
+
+class BatchReextractFieldJobRequest(BaseModel):
+    """Queued job body for batch re-extract + persist (see POST .../batch-reextract-field/start)."""
+
+    ebook_ids: list[uuid.UUID] = Field(min_length=1)
+    field: ReextractFieldName
+    page_range: str = Field(
+        description="1-based inclusive page range in the format 'start-end', e.g. '5-10'."
+    )
+    direction: ReextractDirection

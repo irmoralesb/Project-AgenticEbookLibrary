@@ -72,6 +72,61 @@ export async function reextractField(
   });
 }
 
+export interface BatchReextractFieldRequestDto {
+  ebook_ids: string[];
+  field: ReextractFieldName;
+  page_range: string;
+  direction: ReextractDirection;
+}
+
+export async function startBatchReextractField(
+  dto: BatchReextractFieldRequestDto
+): Promise<IngestStartResponse> {
+  return request<IngestStartResponse>('/api/ebooks/batch-reextract-field/start', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+/**
+ * SSE stream for batch re-extract job progress (same envelope as ingest).
+ */
+export function streamBatchReextractField(
+  jobId: string,
+  onEvent: (evt: IngestProgressEvent) => void,
+  onError: (msg: string) => void
+): () => void {
+  const url = `${BASE}/api/ebooks/batch-reextract-field/stream?job_id=${encodeURIComponent(jobId)}`;
+  const source = new EventSource(url);
+
+  source.onmessage = (e) => {
+    try {
+      const parsed: SseMessage = JSON.parse(e.data as string);
+      if (parsed.error) {
+        onError(parsed.error);
+        source.close();
+        return;
+      }
+      const message = parsed.message ?? '';
+      const isEndOfStream = message === 'stream-end';
+      onEvent({ message, isEndOfStream });
+      if (isEndOfStream) {
+        source.close();
+      }
+    } catch {
+      onError('Failed to parse server event');
+      source.close();
+    }
+  };
+
+  source.onerror = () => {
+    onError('Connection to server lost');
+    source.close();
+  };
+
+  return () => source.close();
+}
+
 export interface KnownPublisherDto {
   id: string;
   name: string;

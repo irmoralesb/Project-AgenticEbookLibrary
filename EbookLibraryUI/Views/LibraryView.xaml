@@ -11,6 +11,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Toolbar -->
@@ -20,6 +21,27 @@
                        FontSize="20" FontWeight="SemiBold"
                        VerticalAlignment="Center"
                        Margin="0,0,20,0" />
+            <CheckBox Content="Batch update"
+                      IsChecked="{Binding IsBatchUpdateMode, Mode=TwoWay}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0" />
+            <Button Command="{Binding OpenBatchReextractDialogCommand}"
+                    Margin="0,0,12,0">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                        <Setter Property="Content" Value="Re-extract selected…" />
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsBatchUpdateMode}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsBatchRunning}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <Button Content="⟳  Refresh"
                     Style="{StaticResource SecondaryButtonStyle}"
                     Command="{Binding LoadBooksCommand}"
@@ -63,6 +85,23 @@
                          VerticalAlignment="Center"
                          Margin="0,0,20,0"
                          Text="{Binding CategoryFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="Tags"
+                           Style="{StaticResource FieldLabelStyle}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <TextBox Width="160"
+                         MinHeight="26"
+                         VerticalContentAlignment="Center"
+                         VerticalAlignment="Center"
+                         Margin="0,0,8,0"
+                         IsEnabled="{Binding IsTagsTextFilterEnabled}"
+                         ToolTip="Match any tag containing this text (case-insensitive)"
+                         Text="{Binding TagsFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                <CheckBox Content="No tags"
+                          VerticalAlignment="Center"
+                          Margin="0,0,20,0"
+                          ToolTip="Show only books with no tags"
+                          IsChecked="{Binding TagsEmptyOnly, Mode=TwoWay}" />
                 <TextBlock Text="Has error"
                            Style="{StaticResource FieldLabelStyle}"
                            VerticalAlignment="Center"
@@ -107,7 +146,7 @@
                 <Style TargetType="DataGridRow">
                     <Setter Property="BorderThickness" Value="0" />
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding HasErrors}" Value="True">
+                        <DataTrigger Binding="{Binding Book.HasErrors}" Value="True">
                             <Setter Property="BorderBrush" Value="#FFF5A8A8" />
                             <Setter Property="BorderThickness" Value="2" />
                             <Setter Property="Background" Value="#12E53935" />
@@ -118,11 +157,40 @@
 
             <DataGrid.Columns>
 
+                <DataGridTemplateColumn Width="40" CanUserSort="False">
+                    <DataGridTemplateColumn.HeaderTemplate>
+                        <DataTemplate>
+                            <CheckBox HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Visibility="{Binding DataContext.IsBatchUpdateMode, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                      Command="{Binding DataContext.ToggleSelectAllVisibleCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                      ToolTip="Select all visible" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.HeaderTemplate>
+                    <DataGridTemplateColumn.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataContext.IsBatchUpdateMode, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGridTemplateColumn.CellStyle>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsBatchSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
                 <!-- Cover thumbnail -->
                 <DataGridTemplateColumn Header="" Width="64" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Image Source="{Binding CoverUrl}"
+                            <Image Source="{Binding Book.CoverUrl}"
                                    Width="40" Height="56"
                                    Stretch="UniformToFill"
                                    Margin="4,2" />
@@ -140,18 +208,18 @@
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource DangerBrush}"
                                        ToolTip="Marked with processing errors (has_errors)"
-                                       Visibility="{Binding HasErrors, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                       Visibility="{Binding Book.HasErrors, Converter={StaticResource BoolToVisibilityConverter}}" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="Title"      Binding="{Binding Title}"          Width="2*" />
-                <DataGridTextColumn Header="Authors"    Binding="{Binding AuthorsDisplay}"  Width="*" />
-                <DataGridTextColumn Header="Category"   Binding="{Binding Category}"        Width="130" />
-                <DataGridTextColumn Header="Tags"       Binding="{Binding TagsDisplay}"     Width="*" />
-                <DataGridTextColumn Header="Year"       Binding="{Binding Year}"            Width="55" />
-                <DataGridTextColumn Header="Publisher"  Binding="{Binding Publisher}"       Width="110" />
-                <DataGridTextColumn Header="Pages"      Binding="{Binding PageCount}"       Width="55" />
+                <DataGridTextColumn Header="Title"      Binding="{Binding Book.Title}"          Width="2*" />
+                <DataGridTextColumn Header="Authors"    Binding="{Binding Book.AuthorsDisplay}"  Width="*" />
+                <DataGridTextColumn Header="Category"   Binding="{Binding Book.Category}"        Width="130" />
+                <DataGridTextColumn Header="Tags"       Binding="{Binding Book.TagsDisplay}"     Width="*" />
+                <DataGridTextColumn Header="Year"       Binding="{Binding Book.Year}"            Width="55" />
+                <DataGridTextColumn Header="Publisher"  Binding="{Binding Book.Publisher}"       Width="110" />
+                <DataGridTextColumn Header="Pages"      Binding="{Binding Book.PageCount}"       Width="55" />
 
                 <!-- Action column -->
                 <DataGridTemplateColumn Header="" Width="90" CanUserSort="False">
@@ -185,10 +253,92 @@
             </DataGrid.Columns>
         </DataGrid>
 
+        <!-- Batch progress log -->
+        <Border Grid.Row="3"
+                Margin="0,8,0,0"
+                Padding="8"
+                MaxHeight="160"
+                Background="White"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="{Binding ShowBatchProgressPanel, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding ProgressLog}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}"
+                                       FontFamily="Consolas"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Margin="0,1" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
         <!-- Status bar -->
-        <TextBlock Grid.Row="3"
+        <TextBlock Grid.Row="4"
                    Text="{Binding StatusMessage}"
                    Foreground="{StaticResource SubtleTextBrush}"
                    Margin="0,8,0,0" />
+
+        <!-- Batch dialog overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="5"
+                Background="#66000000"
+                Visibility="{Binding BatchDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}"
+                Panel.ZIndex="20">
+            <Border VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Background="White"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="20"
+                    MinWidth="360">
+                <StackPanel>
+                    <TextBlock Text="Batch re-extract"
+                               FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="Re-extract and save one field for all checked rows."
+                               Margin="0,8,0,12"
+                               Foreground="{StaticResource SubtleTextBrush}"
+                               TextWrapping="Wrap" />
+
+                    <TextBlock Text="Field" Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox Margin="0,0,0,10"
+                              SelectedValue="{Binding BatchField, Mode=TwoWay}"
+                              SelectedValuePath="Tag">
+                        <ComboBoxItem Content="Authors" Tag="authors" />
+                        <ComboBoxItem Content="ISBN" Tag="isbn" />
+                        <ComboBoxItem Content="Publisher" Tag="publisher" />
+                        <ComboBoxItem Content="Year" Tag="year" />
+                        <ComboBoxItem Content="Tags" Tag="tags" />
+                    </ComboBox>
+
+                    <TextBlock Text="Page range" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Margin="0,0,0,10"
+                             Text="{Binding BatchPageRange, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Text="Direction" Style="{StaticResource FieldLabelStyle}" />
+                    <ComboBox Margin="0,0,0,16"
+                              SelectedValue="{Binding BatchDirection, Mode=TwoWay}"
+                              SelectedValuePath="Tag">
+                        <ComboBoxItem Content="Front to Back" Tag="front_to_back" />
+                        <ComboBoxItem Content="Back to Front" Tag="back_to_front" />
+                    </ComboBox>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Run"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding RunBatchReextractCommand}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Cancel"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding CancelBatchDialogCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Page>

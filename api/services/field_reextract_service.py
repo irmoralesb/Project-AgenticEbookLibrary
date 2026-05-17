@@ -28,7 +28,7 @@ _PAGE_RANGE_PATTERN = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s*$")
 @dataclass(frozen=True)
 class ReextractResult:
     field: ReextractFieldName
-    value: str | list[str] | None
+    value: str | list[str] | int | None
     used_start_page: int
     used_end_page: int
     direction: ReextractDirection
